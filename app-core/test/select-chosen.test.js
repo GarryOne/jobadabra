@@ -17,7 +17,7 @@ test('a real choice is an answer, a blank one is not, in every reader; before a 
   const window = openPage(JSDOM, FORM, { url: 'https://api.easytemp.ch/live/bew/1-FR.php' });
   const chosen = id => window.__jobadabraChosen(window.document.getElementById(id));
   assert.deepEqual(['anrede', 'zivil', 'region', 'pays'].map(chosen), [true, true, false, false]);
-  const audit = Object.fromEntries(window.__jobadabraAuditVisibleFields().map(row => [row.field, row.filled]));
+  const audit = Object.fromEntries(window.__jobPilottoAuditVisibleFields().map(row => [row.field, row.filled]));
   assert.deepEqual([audit.anrede, audit.region, audit.pays], [true, false, false], 'the audit');
   const before = Object.fromEntries((await window.__jobadabraDescribeForm()).map(row => [row.field, row.filled]));
   assert.deepEqual([before.anrede, before.zivil, before.region], [false, false, false], 'before a fill the AI is asked about preselected choices');

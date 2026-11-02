@@ -75,7 +75,7 @@ test('Apply with Claude hand-off: hook only on a tab the app opened, ticket chec
   // No content script. hook.js and review.js are injected into a tab the desktop app opened, nowhere else.
   assert.equal(manifest.content_scripts, undefined);
   const hook = read('extension/hook.js');
-  assert.match(hook, /addEventListener\('jobadabra:fill'/);
+  assert.match(hook, /addEventListener\('jobpilotto:fill'/);
   assert.match(hook, /typeof request\?\.ticket !== 'string'/);
   const background = readBackground();
   const handOff = background.slice(background.indexOf('async function handOff'), background.indexOf('// Older builds registered'));
@@ -96,7 +96,7 @@ test('the Submit guard can be loaded twice on a page (a second fill) without thr
     HTMLFormElement: function () {}, HTMLElement: function () {}, Element: function () {}, MutationObserver: function () { this.observe = noop; } });
   window.window = window;
   assert.doesNotThrow(() => { vm.runInContext(code, context); vm.runInContext(code, context); });
-  assert.equal(window.__jobadabraGuardActive, false);
+  assert.equal(window.__jobPilottoGuardActive, false);
 });
 
 test('the panel (review.js) is read only: it never types, ticks, clicks or submits anything in the form', () => {

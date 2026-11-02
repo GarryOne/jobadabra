@@ -45,7 +45,7 @@ test('the form tab is the one that shows the form\'s address, not the harness\'s
 test('a fill state that cannot be read says so and what it saw, never a bare null', async () => {
   const {fillState} = await import('../../lib/extension.mjs');
   const pageWith = attribute => ({evaluate: async fn => {
-    globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobpilotto-fill=0a089404', documentElement: {dataset: attribute === undefined ? {} : {jobadabraFill: attribute}}};
+    globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobpilotto-fill=0a089404', documentElement: {dataset: attribute === undefined ? {} : {jobpilottoFill: attribute}}};
     try { return await fn(); } finally { delete globalThis.document; }
   }});
   try {

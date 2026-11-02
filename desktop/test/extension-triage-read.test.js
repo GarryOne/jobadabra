@@ -119,10 +119,10 @@ test('a read never starts the speculative early answer call before its form judg
 test('the owned browser poll command uses the same ownership-checked poll as the report alarm', async t => {
   const state = install(t);
   await import('../../extension/background-apply.js');
-  assert.equal(await globalThis.__jobadabraBackgroundSessions.poll(), true);
+  assert.equal(await globalThis.__jobPilottoBackgroundSessions.poll(), true);
   assert.deepEqual(state.posted.map(call => call.body.action), ['poll']);
   delete state.local.backgroundOwner;
-  await assert.rejects(() => globalThis.__jobadabraBackgroundSessions.poll(), /poll/);
+  await assert.rejects(() => globalThis.__jobPilottoBackgroundSessions.poll(), /poll/);
   assert.deepEqual(state.posted.map(call => call.body.action), ['poll'], 'an ordinary browser cannot poll background applications');
 });
 
@@ -139,7 +139,7 @@ test('a forced poll waits for an in-flight alarm then makes its own extension re
   });
   const alarm = pollBackgroundApply(current.local);
   await opened;
-  const forced = globalThis.__jobadabraBackgroundSessions.poll().then(value => { settled = true; return value; });
+  const forced = globalThis.__jobPilottoBackgroundSessions.poll().then(value => { settled = true; return value; });
   await new Promise(resolve => setImmediate(resolve));
   const wasSettled = settled;
   release();

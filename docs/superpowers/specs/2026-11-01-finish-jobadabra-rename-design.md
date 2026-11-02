@@ -35,7 +35,8 @@ Reproduce: `node tools/rename-inventory.mjs` (hits per rule) and `--tokens` (eve
 | Kind | Action |
 |---|---|
 | Prose, comments, docs, test titles, local names, tmp-dir prefixes | renamed |
-| Page globals, DOM attributes, ids, classes, events (`__jobPilotto*`, `data-jobpilotto-*`, `jobpilotto-fill`, `jobpilotto:fill`) | renamed on both sides at once |
+| Page globals, DOM attributes, ids, classes, events (`__jobPilotto*`, `data-jobpilotto-*`) used only inside the extension package | renamed (the extension ships as one unit) |
+| **App ↔ extension contract** (Gitar, #2926: the Web Store extension updates apart from the app): the `#jobpilotto-fill` mark, `data-jobpilotto-hook`, `dataset.jobpilottoFill`, the `jobpilotto:fill` event, the page calls `__jobPilotto{ClickOption,Step,Steps,GuardActive,AuditVisibleFields,FillKnownFields}` and the service-worker call `__jobPilottoBackgroundSessions` | **stay** (map rules `keep-fill-mark`, `keep-extension-*`); flipped in two steps (the extension answers to both names, then the app uses the new one): JOB-199 |
 | `JOB_PILOTTO_*` env, `X-Job-Pilotto` header, Sentry release, PostHog `$lib`, `package.json` names | renamed (owner: "Rename to jobadabra" for Sentry and PostHog; charts and error trends break on the switch day) |
 | Keychain items and account | renamed, with the fallback above |
 | Updater legacy asset names, `appId`, `productName`, Safe Storage | see "What the owner chose" |

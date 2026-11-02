@@ -38,7 +38,7 @@ function stoppedPage() {
   try { const clean = location.href.replace(/#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
   for (const id of ['jobadabra-progress', 'jobadabra-note', 'jobadabra-fill-overlay']) document.getElementById(id)?.remove();
   if (!document.documentElement) return;
-  document.documentElement.dataset.jobadabraFill = JSON.stringify({state: 'stopped'});
+  document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'stopped'});
   if (window.top !== window || document.getElementById('jobadabra-review-host')) return;
   const box = document.createElement('div');
   box.id = 'jobadabra-note';
@@ -54,7 +54,7 @@ function startedPage() {
   const was = !!window.__jobadabraStopped;
   delete window.__jobadabraStopped;
   document.querySelector('#jobadabra-note[data-stopped]')?.remove();
-  try { if (JSON.parse(document.documentElement?.dataset.jobadabraFill || '{}').state === 'stopped') delete document.documentElement.dataset.jobadabraFill; } catch { /* not our mark */ }
+  try { if (JSON.parse(document.documentElement?.dataset.jobpilottoFill || '{}').state === 'stopped') delete document.documentElement.dataset.jobpilottoFill; } catch { /* not our mark */ }
   return was;
 }
 

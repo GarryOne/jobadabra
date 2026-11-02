@@ -402,7 +402,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
 async function handOff(tab, job, ticket) {
   await arm(tab.id);
   const token = crypto.randomUUID(), state = value => chrome.scripting.executeScript({target: {tabId: tab.id}, args: [JSON.stringify(value), token, value.state],
-    func: (text, token, now) => { if (now === 'running') window.__jobadabraFillToken = token; else if (now !== 'error' && window.__jobadabraFillToken !== token) return; document.documentElement.dataset.jobadabraFill = text; }}).catch(() => {});   // done only into the page this fill started on (fill-flow.js writeState); an error may come before it started
+    func: (text, token, now) => { if (now === 'running') window.__jobadabraFillToken = token; else if (now !== 'error' && window.__jobadabraFillToken !== token) return; document.documentElement.dataset.jobpilottoFill = text; }}).catch(() => {});   // done only into the page this fill started on (fill-flow.js writeState); an error may come before it started
   try {
     const config = await settings();
     const checked = await api(config, '/extension/ticket', {method: 'POST', body: JSON.stringify({ticket, job})});

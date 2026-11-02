@@ -50,10 +50,10 @@ test('only a pull request\'s page cases run the quick window; main, the daily ru
   } finally { if (was === undefined) delete process.env.JP_REPLAY_WINDOW; else process.env.JP_REPLAY_WINDOW = was; }
 });
 
-// Gitar on #2378 (28 Oct 2026): the extension leaves the fill's card id (a bare uuid) in <html data-jobadabra-fill>; fillState now says `unreadable` for it, which is truthy, and the quick window
+// Gitar on #2378 (28 Oct 2026): the extension leaves the fill's card id (a bare uuid) in <html data-jobpilotto-fill>; fillState now says `unreadable` for it, which is truthy, and the quick window
 // ended on it. A wait leans on a state only when the page wrote one; a mark that is not a state is "nothing written", as before. Real reader, real in-page function, a stubbed document.
 const cardIdPage = () => ({evaluate: async fn => {
-  globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/x', documentElement: {dataset: {jobadabraFill: '3f2a9c1e-7b64-4d0a-9a53-0c1d2e3f4a5b'}}};
+  globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/x', documentElement: {dataset: {jobpilottoFill: '3f2a9c1e-7b64-4d0a-9a53-0c1d2e3f4a5b'}}};
   try { return await fn(); } finally { delete globalThis.document; }
 }});
 

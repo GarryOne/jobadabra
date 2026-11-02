@@ -238,7 +238,7 @@ function lateRows(requests, lastRun) {
 // The whole check at a case's end. scope: judgeCase's (page(), mine()). Waits for the fill's own record (until the case's deadline), then for the panel's next report.
 export async function falseReadings(item, {page, mine}, {deadline = Date.now() + 10000, settleMs = 2500} = {}) {
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const filling = () => page().evaluate(() => { try { return JSON.parse(document.documentElement.dataset.jobadabraFill || '{}').state === 'running'; } catch { return false; } }).catch(() => false);
+  const filling = () => page().evaluate(() => { try { return JSON.parse(document.documentElement.dataset.jobpilottoFill || '{}').state === 'running'; } catch { return false; } }).catch(() => false);
   while (Date.now() < deadline && await filling()) await wait(300);
   await wait(settleMs);   // the panel reports on its own beat (review.js sync): its report after the fill's end
   const expected = expectedAnswers(item);

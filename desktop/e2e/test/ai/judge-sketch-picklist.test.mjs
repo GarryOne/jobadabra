@@ -42,7 +42,7 @@ test('every picklist shape reads chosen or not in the judges\' sketch, and the f
     const sketch = await page.evaluate(functionSource('account-fill.js', 'export function accountSketch'));
     assert.equal(sketch.controls.length, SHAPES.length, 'one control per shape');
     await page.addScriptTag({content: fs.readFileSync(path.join(root, 'extension/page/browser-form-fastpath.js'), 'utf8')});
-    const audit = await page.evaluate('window.__jobadabraAuditVisibleFields()');
+    const audit = await page.evaluate('window.__jobPilottoAuditVisibleFields()');
     SHAPES.forEach(([name, , want], index) => {
       assert.equal(sketch.controls[index].state, want, `judges' sketch: ${name}`);
       assert.equal(audit[index].filled, want === 'filled', `form audit: ${name}`);

@@ -24,7 +24,7 @@ function page(clock = {now: 0}) {
   Object.defineProperty(HTMLInputElement.prototype, 'value', {get() { return this._value || ''; }, set(value) { this._value = value; }});
   class HTMLTextAreaElement {}
   const boxes = ['first', 'last', 'link', 'mail'].map(id => new HTMLInputElement(id));
-  const window = {__jobadabraGuardActive: true};
+  const window = {__jobPilottoGuardActive: true};
   const code = fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8');
   const context = vm.createContext({window, document: {querySelectorAll: () => boxes}, HTMLInputElement, HTMLTextAreaElement,
     getComputedStyle: () => ({visibility: 'visible'}), Event: class {}, Date: Object.assign(function () { return new globalThis.Date(clock.now); }, {now: () => clock.now}),
@@ -32,7 +32,7 @@ function page(clock = {now: 0}) {
   // The one attempt log the retypes ask (extension/page/attempts.js), loaded first as everywhere the fastpath runs.
   vm.runInContext(fs.readFileSync(new URL('../../extension/page/attempts.js', import.meta.url), 'utf8'), context);
   vm.runInContext(code, context);
-  window.__jobadabraFillKnownFields(boxes.map(box => ({field: box.id, value: `typed-${box.id}`})));
+  window.__jobPilottoFillKnownFields(boxes.map(box => ({field: box.id, value: `typed-${box.id}`})));
   // A re-render: the element leaves the page, a new empty one with the same id takes its place.
   const replace = index => { const old = boxes[index], fresh = new HTMLInputElement(old.id); old.isConnected = false; old._value = ''; boxes[index] = fresh; return fresh; };
   return {window, boxes, replace};

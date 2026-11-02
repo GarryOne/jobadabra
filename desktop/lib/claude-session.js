@@ -61,12 +61,12 @@ export function prompt(url, {auditFile, session = ''}) {
   const mark = session ? `#jobpilotto-fill=${session}` : '#jobpilotto-fill';   // the id makes the tab this session's from its first page
   const handoff = `Open the form tab yourself, once: tabs_context_mcp with createIfEmpty true, then navigate that tab to ${url}${mark} ` +
     `(keep the ${mark} at the end, it arms the Jobadabra extension on the tab, which then fills the form by itself; whenever you navigate that tab to another address yourself, put ${mark} at the end of that address too, or the tab stops being part of this application). It is the ` +
-    'only tab for this application: never open a second one. On each page, if <html> has data-jobadabra-hook, read ' +
-    'document.documentElement.dataset.jobadabraFill every 3 s (in one JS call that waits, up to 90 s). state running: keep waiting. ' +
+    'only tab for this application: never open a second one. On each page, if <html> has data-jobpilotto-hook, read ' +
+    'document.documentElement.dataset.jobpilottoFill every 3 s (in one JS call that waits, up to 90 s). state running: keep waiting. ' +
     'done: fill ONLY its todo (dropdowns that ignore scripted clicks, per the skill), then press Next when the form has another page. ' +
     'error: fill this page yourself. no-form: this page is not the form, so press Apply or Next in this same tab. account: sign in or create ' +
     'the account as the skill says; the extension does not type the password. After each navigation, wait for the new state. A tab opened from ' +
-    'this one is the same session: use it, the extension follows it. If there is no data-jobadabra-hook after 10 s, carry on without the extension. ' +
+    'this one is the same session: use it, the extension follows it. If there is no data-jobpilotto-hook after 10 s, carry on without the extension. ' +
     'Never trigger the extension\'s fill yourself. Work only from the form in Chrome and the --context output: don\'t read this repo\'s tests, config or README, ' +
     'and report as needing my attention only a control on the form. ';
   return `${identity}Use the apply-to-job skill to apply to this job: ${url}. Don't ask me questions or discuss the skill file — just follow it: ` +
@@ -80,11 +80,11 @@ export function prompt(url, {auditFile, session = ''}) {
     `for this job, stop right there: fill nothing, run tools/notify.sh ${url} "No kit yet — press Apply on the job first", say so in one line and finish. ` +
     "Get everything in ONE call first — the kit, Profile, Application Answers and earlier runs' learnings for this job board: " +
     `python3 -m src.ai.apply_run --context ${url} (don't fetch those pages separately). For every dropdown, open it and pick with ` +
-    "window.__jobadabraClickOption('<exact option text>') — never type + Return, which picks partial matches (\"Male\" -> \"Female\"). " +
-    "While filling, stamp phases inside JS calls you already make with window.__jobadabraStep('<name>') (e.g. 'dropdowns', 'resume'). " +
+    "window.__jobPilottoClickOption('<exact option text>') — never type + Return, which picks partial matches (\"Male\" -> \"Female\"). " +
+    "While filling, stamp phases inside JS calls you already make with window.__jobPilottoStep('<name>') (e.g. 'dropdowns', 'resume'). " +
     `Right before you fill the first field, run: tools/notify.sh ${url} "Filling started" and note the time from date -u +%FT%TZ. ` +
     'At hand-over, record the run instead of notifying yourself: in the form tab evaluate JSON.stringify({page_url: location.href, ' +
-    'guard_active: !!window.__jobadabraGuardActive, fields: window.__jobadabraAuditVisibleFields(), steps: window.__jobadabraSteps || []}), ' +
+    'guard_active: !!window.__jobPilottoGuardActive, fields: window.__jobPilottoAuditVisibleFields(), steps: window.__jobPilottoSteps || []}), ' +
     `write that JSON to ${auditFile}, then run: python3 -m src.ai.apply_run --record ${url} --audit "${auditFile}" --started <that time> ` +
     '--learning "<one line on what you learned about this form, or empty if nothing new>" — it saves the run record, updates the Notion row and ' +   // about Notion
     `sends my "Form filled" or "Needs your input" notification. If the posting is gone ("Job not found", 404, or not on the company's board), ` +

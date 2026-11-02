@@ -10,7 +10,7 @@ const flow = ['../../extension/fill-tab-inputs.js', '../../extension/fill-tab-fi
 
 test('a throw inside the page fill comes back as {error, pageError}, with where it happened', async () => {
   const kit = new Proxy({}, {get: (target, key) => target[key] || (() => '')});
-  const window = {__jobadabraFillKit: kit, __jobadabraGuardActive: true, __jobadabraDescribeForm: () => { throw new TypeError("Cannot read properties of null (reading 'x')"); }};
+  const window = {__jobadabraFillKit: kit, __jobPilottoGuardActive: true, __jobadabraDescribeForm: () => { throw new TypeError("Cannot read properties of null (reading 'x')"); }};
   vm.runInContext(code, vm.createContext({window, document: {querySelectorAll: () => []}, console}));
   const result = await window.__jobadabraExtensionFill([], {}, null, '', false);
   assert.match(result.error, /^the fill failed on this page: Cannot read properties of null/);
@@ -26,7 +26,7 @@ test('flow.js turns a null or errored page result into an error result before an
 
 test('a result holding something that cannot be copied loses only that key and names it', async () => {
   const kit = new Proxy({}, {get: (target, key) => target[key] || (() => '')});
-  const window = {__jobadabraFillKit: kit, __jobadabraGuardActive: true, __jobadabraDescribeForm: () => []};
+  const window = {__jobadabraFillKit: kit, __jobPilottoGuardActive: true, __jobadabraDescribeForm: () => []};
   const context = vm.createContext({window, document: {querySelectorAll: () => []}, console, structuredClone});
   vm.runInContext(code.replace('return summary;\n  };', 'summary.operated = [{node: () => 1}]; return summary;\n  };'), context);
   const result = await window.__jobadabraExtensionFill([], {}, null, '', false).catch(error => ({thrown: String(error)}));

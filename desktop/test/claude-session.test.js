@@ -43,7 +43,7 @@ test('the prompt names the job and the audit file, uses the open form tab and th
   assert.match(text, /account/);
   assert.match(text, /the extension follows it/);
   assert.match(text, /don't read this repo's tests, config or README/);
-  assert.doesNotMatch(text, /jobadabra:fill|ticket/);
+  assert.doesNotMatch(text, /jobpilotto:fill|ticket/);
   assert.match(text, /src\.ai\.passwords/);
   assert.doesNotMatch(text, /security find-generic-password|\/tmp\//);
 });

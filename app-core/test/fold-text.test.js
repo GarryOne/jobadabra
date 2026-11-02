@@ -41,7 +41,7 @@ const MATCHERS = {
   'click an option (page/browser-form-fastpath.js)': async (window, answer) => {
     const picked = [];
     window.document.addEventListener('click', (event) => { const option = event.target.closest?.('[class*=option]'); if (option) picked.push(option.textContent.trim()); }, true);
-    window.__jobadabraClickOption(answer);
+    window.__jobPilottoClickOption(answer);
     return picked[0] ?? null;
   },
   'option that fits an answer (page/value-class.js fits)': async (window, answer) => {

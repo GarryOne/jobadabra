@@ -115,7 +115,7 @@ test('the app saying stuck after a step ends the working look; a newer step brin
   const t = await open({'/extension/review': () => ({matched: true, session: {id: 's1', status: 'input', live: false, kind: 'form', stuck: stuck ? 'no-form' : ''}})});
   try {
     // The fill mark starts the worker's own fill here; its end ("fill over") would end any step later in this test: wait for it first.
-    await t.app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobadabraFill || ''), null, {timeout: 30000}).catch(() => {});
+    await t.app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 30000}).catch(() => {});
     await t.step('Filling Full name…');
     await t.lookIs({dim: true, centred: true}, 'a fill step');
     stuck = true;
@@ -261,7 +261,7 @@ test('after Stop, every restart on the page works again: Check form again, Fill 
 });
 
 // The fill's own first run on the page (its mark) ends before a test drives its own steps: its end would cut into them.
-const fillOver = t => t.app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobadabraFill || ''), null, {timeout: 30000}).catch(() => {});
+const fillOver = t => t.app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 30000}).catch(() => {});
 // The look, sampled in the page every 16 ms (a frame) from now on: what the person sees, including a flash between two calls of the test.
 const sampleLook = t => t.app.page.evaluate(() => { window.__looks = []; window.__sampler = setInterval(() => { const h = document.getElementById('jobadabra-review-host');
   window.__looks.push({dim: !!document.getElementById('jobadabra-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), at: performance.now()}); }, 16); });
@@ -454,11 +454,11 @@ test('the fill writing its end on the page frees it at once: the person\'s first
   try {
     await t.step('Choosing the drop-down answers…');
     await t.lookIs({dim: true, busy: true}, 'a fill step');
-    await t.app.page.evaluate(() => { document.documentElement.dataset.jobadabraFill = JSON.stringify({state: 'running'}); });
+    await t.app.page.evaluate(() => { document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'running'}); });
     await t.app.page.waitForTimeout(300);
     await t.lookIs({dim: true, busy: true}, 'a running fill keeps the look');   // positive control: "running" changes nothing
     const before = await t.app.page.evaluate(() => window.hits || 0);
-    await t.app.page.evaluate(() => { document.documentElement.dataset.jobadabraFill = JSON.stringify({state: 'done', filled: 3, left: 0}); });
+    await t.app.page.evaluate(() => { document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'done', filled: 3, left: 0}); });
     await t.verdict('done');   // Why-changed (27 Oct 2026): the worker's writeState says the verdict as it writes the end (fill-flow.js); the page no longer watches the attribute
     await t.app.page.waitForTimeout(50);
     const free = await t.clickInput();

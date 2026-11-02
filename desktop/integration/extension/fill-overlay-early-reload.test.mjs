@@ -13,7 +13,7 @@ const POSTING = how => `<!doctype html><title>ML Engineer</title><body><h1>ML En
 const SAMPLER = () => {
   const born = performance.now(), doc = Math.round(performance.timeOrigin + born);
   const sample = () => { try {
-    const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot, fill = document.documentElement.dataset.jobadabraFill || '';
+    const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot, fill = document.documentElement.dataset.jobpilottoFill || '';
     window.__rec({doc, path: location.pathname, age: Math.round(performance.now() - born), dim: !!document.getElementById('jobadabra-fill-overlay'), host: !!h,
       centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), label: root?.querySelector('.fill .label')?.textContent || '',
       over: /"state":"(done|error|no-form|account)"/.test(fill)}); } catch { /* no document element or no binding yet */ } };

@@ -28,9 +28,9 @@ function scripted(rows, t) {
   t.after(() => window.close());
   const elements = Object.fromEntries(rows.map(item => [item.field, window.document.getElementById(item.field)]));
   window.__jobadabraDescribeForm = async () => rows.map(item => ({...item}));
-  window.__jobadabraAuditVisibleFields = () => rows.map(item => ({...item}));
+  window.__jobPilottoAuditVisibleFields = () => rows.map(item => ({...item}));
   window.__jobadabraProfileEntries = () => [];
-  window.__jobadabraFillKnownFields = () => ({filled: []});
+  window.__jobPilottoFillKnownFields = () => ({filled: []});
   window.__jobadabraCoverage = null;
   window.__jobadabraSuggest = {lostOnBlur: async () => []};
   for (const item of rows) if (item.value) elements[item.field].value = item.value;
@@ -41,7 +41,7 @@ function scripted(rows, t) {
 function observe(window) {
   const events = [];
   for (const type of ['input', 'change', 'click', 'submit']) window.document.addEventListener(type, event => events.push(`${type}:${event.target.id}`));
-  for (const name of ['__jobadabraDescribeForm', '__jobadabraFillKnownFields', '__jobadabraAuditVisibleFields']) {
+  for (const name of ['__jobadabraDescribeForm', '__jobPilottoFillKnownFields', '__jobPilottoAuditVisibleFields']) {
     const original = window[name];
     window[name] = (...args) => { events.push(name); return original(...args); };
   }
@@ -68,7 +68,7 @@ for (const [kind, html, value, expected, emitted] of kinds) test(`${kind}: value
     const el = window.document.getElementById('q');
     assert.equal(['radio', 'checkbox'].includes(kind) ? el.checked : el.value, expected);
     assert.deepEqual(events.filter(item => /^(input|change|click|submit):/.test(item)), emitted);
-    assert.deepEqual(events.filter(item => !/^(input|change|click|submit):/.test(item)), ['__jobadabraDescribeForm', 'gate', '__jobadabraFillKnownFields', 'gate', 'gate', 'gate', '__jobadabraAuditVisibleFields']);
+    assert.deepEqual(events.filter(item => !/^(input|change|click|submit):/.test(item)), ['__jobadabraDescribeForm', 'gate', '__jobPilottoFillKnownFields', 'gate', 'gate', 'gate', '__jobPilottoAuditVisibleFields']);
     assert.equal(window.document.getElementById('privacy').checked, false);
     assert.equal(result.held, false);
     assert.deepEqual(result.reach, {asked: 1, matched: 1, byQuestion: 0, lost: 0});
@@ -96,7 +96,7 @@ test('CV and tailored letter upload follow text and controls, before manual lett
     assert.equal(window.document.getElementById('cv').files[0]?.name, 'cv.pdf');
     assert.equal(window.document.getElementById('letterfile').files[0]?.name, 'letter.pdf');
     assert.equal(window.document.getElementById('letter').value, 'private letter');
-    assert.deepEqual(events, ['__jobadabraDescribeForm', 'gate', '__jobadabraFillKnownFields', 'input:q', 'change:q', 'gate', 'gate', 'input:cv', 'change:cv', 'input:letterfile', 'change:letterfile', 'gate', 'input:letter', 'change:letter', '__jobadabraAuditVisibleFields']);
+    assert.deepEqual(events, ['__jobadabraDescribeForm', 'gate', '__jobPilottoFillKnownFields', 'input:q', 'change:q', 'gate', 'gate', 'input:cv', 'change:cv', 'input:letterfile', 'change:letterfile', 'gate', 'input:letter', 'change:letter', '__jobPilottoAuditVisibleFields']);
     assert.equal(result.resumeAttached, true);
     assert.equal(result.filled, 3);
     assert.equal(result.unfilledRequired, 0);
@@ -160,7 +160,7 @@ test('gate holds controls, upload and letter while preserving the original plain
   const {window, fill} = scripted([row('q')], t);
   const calls = [];
   window.__jobadabraGate = async () => { calls.push('gate'); return false; };
-  window.__jobadabraFillKnownFields = () => { calls.push('plain'); return {filled: ['q']}; };
+  window.__jobPilottoFillKnownFields = () => { calls.push('plain'); return {filled: ['q']}; };
   window.__jobadabraControls = {fill: async () => { calls.push('controls'); return []; }};
   window.__jobadabraUpload.fill = async () => { calls.push('upload'); return []; };
   const result = plain(await fill([answer('q', 'private')], {letter: 'private letter'}));
@@ -192,9 +192,9 @@ test('operators, lost-on-blur menus, uploads and coverage contribute in their or
 
 test('early guards leave the page untouched', {skip: !JSDOM}, async () => {
   const {window, elements, fill} = fakeFillPage([row('q')]);
-  delete window.__jobadabraGuardActive;
+  delete window.__jobPilottoGuardActive;
   assert.deepEqual(plain(await fill([])), {error: 'The page helpers did not load; nothing was filled.'});
-  window.__jobadabraGuardActive = true;
+  window.__jobPilottoGuardActive = true;
   window.__jobadabraStopped = true;
   assert.deepEqual(plain(await fill([])), {error: 'Stopped by you.', stopped: true});
   assert.equal(elements.q.value, '');

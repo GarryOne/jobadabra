@@ -177,6 +177,25 @@
    "expires": "JOB-199 (flip after the extension reading both marks is on the store)"
   },
   {
+   "id": "keep-extension-page-calls",
+   "match": "^__jobPilotto(ClickOption|Steps?|GuardActive|AuditVisibleFields|FillKnownFields|BackgroundSessions)$",
+   "keep": "the page and service-worker functions the app’s prompts and tools call on the extension: a name the app and the Chrome Web Store extension use to talk to each other; the extension updates on its own, so a new app must still find an old extension (Gitar, #2926); flipped in two steps (the extension answers to both names, then the app uses the new one)",
+   "expires": "JOB-199 (flip after the extension answering to both names is on the store)"
+  },
+  {
+   "id": "keep-extension-hook",
+   "match": "^(data-jobpilotto-hook|jobpilottoHook|jobpilottoFill|data-jobpilotto-fill)$",
+   "keep": "the hook marks on <html> that a Claude session reads: a name the app and the Chrome Web Store extension use to talk to each other; the extension updates on its own, so a new app must still find an old extension (Gitar, #2926); flipped in two steps (the extension answers to both names, then the app uses the new one)",
+   "expires": "JOB-199 (flip after the extension answering to both names is on the store)"
+  },
+  {
+   "id": "keep-extension-event",
+   "match": "^jobpilotto$",
+   "after": "^:fill",
+   "keep": "the jobpilotto:fill event a Claude session fires for the extension: a name the app and the Chrome Web Store extension use to talk to each other; the extension updates on its own, so a new app must still find an old extension (Gitar, #2926); flipped in two steps (the extension answers to both names, then the app uses the new one)",
+   "expires": "JOB-199 (flip after the extension answering to both names is on the store)"
+  },
+  {
    "id": "in-page-global",
    "match": "^__jobPilotto",
    "step": 4,

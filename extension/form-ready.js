@@ -28,10 +28,10 @@ export const claimsReady = payload => !!payload && !payload.account && Number(pa
 // world 'MAIN': the page's own world, where the fill kit's field-name reader lives (the judge's sketch and its layer name fields as the panel does).
 const run = (tab, frameId, func, args = [], world) => chrome.scripting.executeScript({target: {tabId: tab.id, frameIds: [frameId ?? 0]}, func, args, ...(world ? {world} : {})}).then(rows => rows?.[0]?.result).catch(() => undefined);
 
-// The fill of this tab still running (fill-flow.js writes <html data-jobadabra-fill> on the top page): the page is half filled while the AI's answers are on their way, so the panel's count can
+// The fill of this tab still running (fill-flow.js writes <html data-jobpilotto-fill> on the top page): the page is half filled while the AI's answers are on their way, so the panel's count can
 // look ready over boxes not written yet (12 Oct 2026, HelloFresh in the app: "needs First Name*" 0.6 s after the first fields, over a sketch with every box empty; the stale flag stayed and the
 // phone retry never ran). The panel's claim is not judged then: the fill's own end judges the settled page (formNext). Guard: app-core/test/form-ready.test.js, recorded case judge-waits-for-fill-1.
-const fillRunning = tab => run(tab, 0, () => { try { return JSON.parse(document.documentElement?.dataset.jobadabraFill || '{}').state === 'running'; } catch { return false; } }).then(Boolean);
+const fillRunning = tab => run(tab, 0, () => { try { return JSON.parse(document.documentElement?.dataset.jobpilottoFill || '{}').state === 'running'; } catch { return false; } }).then(Boolean);
 
 export async function formReady(tab, frameId, payload) {
   if (!claimsReady(payload)) return;

@@ -102,7 +102,7 @@
       if (q) groupOf.set(b.id || b.name, q);
     }
     const seenGroups = new Set();
-    const after = window.__jobadabraAuditVisibleFields().flatMap(row => row.type === 'radio'
+    const after = window.__jobPilottoAuditVisibleFields().flatMap(row => row.type === 'radio'
       ? auditRadio(row, rowOf, seenGroups) : auditCheckbox(row, groupOf, seenGroups));
     // Required questions the page shows that nothing above read (page/coverage.js): a layout the reader doesn't know. Each is
     // listed for you, counted as required, and traced as a reading failure, so it is reported (with its HTML) and learned.
@@ -191,7 +191,7 @@
 
   // answers: [{field, value, question?, confidence?, note?}] merged by the extension (AI + kit).
   const fillPage = async (all, profile, resume, coverLetter = '', acceptConsents = false) => {
-    if (!('__jobadabraGuardActive' in window)) return {error: 'The page helpers did not load; nothing was filled.'};
+    if (!('__jobPilottoGuardActive' in window)) return {error: 'The page helpers did not load; nothing was filled.'};
     if (window.__jobadabraStopped) return {error: 'Stopped by you.', stopped: true};
     // The AI's likely answers it was not told (use: "propose", app-core/src/extension.js): shown to you as proposals, never typed.
     // A kind only (use: "kind", no value): the AI's reading of a legal question, marked below and never filled (app-core/src/extension.js answerForm).
@@ -206,7 +206,7 @@
     armed.push(...consentChoices.armed.map(field => rowOf[field]?.label || field));
     let filled = consentChoices.filled.length;
     const plain = planPlain(answers, rowOf, contactFields);
-    const typed = window.__jobadabraFillKnownFields([...contact, ...plain]);
+    const typed = window.__jobPilottoFillKnownFields([...contact, ...plain]);
     filled += (typed.filled || []).length;
     markContact(contact, typed, rowOf, review);
     filled = await rearmLostText(contact, plain, typed, rowOf, armed, filled);

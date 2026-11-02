@@ -95,7 +95,7 @@ def record_from_page(url, page, started, ended, agent='claude'):
     """Run record for a form filled by an interactive agent (Claude, or a person), in the same
     format as a Codex run so --status/--report/the benchmark cover it too.
 
-    page = {"page_url", "guard_active", "fields": window.__jobadabraAuditVisibleFields()} —
+    page = {"page_url", "guard_active", "fields": window.__jobPilottoAuditVisibleFields()} —
     labels and filled flags only, never values. The verdict comes from that page state, not from
     the agent's own summary: ready only if the guard is on, every required non-legal field is
     filled, no legal box is ticked and a resume is attached. Field values are NOT compared to their
@@ -139,10 +139,10 @@ def _prompt(url, learnings=''):
     return (learnings + f'Read AGENTS.md and .claude/skills/apply-to-job/SKILL.md. Fill the application at {url} '
             'using its Notion kit, saved Profile/Application Answers, and CV. Use the Playwright MCP '
             'Chrome extension. Open a NEW browser tab for the job so the init-script guard loads. '
-            'Before filling, verify window.__jobadabraGuardActive is true; if not, stop and report '
-            'failed. For plain text and static select fields, call window.__jobadabraFillKnownFields '
+            'Before filling, verify window.__jobPilottoGuardActive is true; if not, stop and report '
+            'failed. For plain text and static select fields, call window.__jobPilottoFillKnownFields '
             'with exact field IDs/names and sourced values in one browser evaluation, then use '
-            'window.__jobadabraAuditVisibleFields to identify gaps. Use your judgment only for '
+            'window.__jobPilottoAuditVisibleFields to identify gaps. Use your judgment only for '
             'skipped or unfamiliar widgets and questions. Never click Submit/Apply/Send, never '
             'unlock the guard, never check legal acknowledgments, '
             'never create an account, and leave unknown facts blank. '
@@ -354,7 +354,7 @@ def main(argv=None):
                              'audit: needs --audit; writes the run record, updates Notion, notifies')
     parser.add_argument('--audit', metavar='FILE',
                         help='for --record: JSON {"page_url", "guard_active", "fields": '
-                             '__jobadabraAuditVisibleFields()}')
+                             '__jobPilottoAuditVisibleFields()}')
     parser.add_argument('--started', metavar='ISO',
                         help='for --record: when filling started (UTC ISO-8601); fill time = now - started')
     parser.add_argument('--agent', default='claude', help='for --record: who filled it (default claude)')

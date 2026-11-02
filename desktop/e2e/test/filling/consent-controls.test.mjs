@@ -51,7 +51,7 @@ for (const shape of ['native', 'custom', 'aria']) test(`${shape} consent follows
     assert.equal(again.unfilledRequired, 1, 'only the attestation remains required');
     assert.equal(again.trace.find(row=>row.label.startsWith('Privacy notice')).outcome,'filled');
     assert.equal(await page.evaluate(()=>window.__jobadabraArmedCount()), 0, 'repeat must not arm a committed consent');
-    assert.equal(await page.evaluate(()=>window.__jobadabraAuditVisibleFields().find(row=>row.field==='notice').filled), true);
+    assert.equal(await page.evaluate(()=>window.__jobPilottoAuditVisibleFields().find(row=>row.field==='notice').filled), true);
     assert.equal(await page.evaluate(()=>window.submits), 0);
   } finally { await browser.close(); }
 });

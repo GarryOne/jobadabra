@@ -32,7 +32,7 @@ test('a "• Add:" line is never typed, from any producer: the rest is typed as 
   const two = [{...rows[0], filled: false, value: ''}, {...rows[1], filled: false, value: ''}];
   const {window, elements, fill} = fakeFillPage(two);
   const typed = {};
-  window.__jobadabraFillKnownFields = entries => { for (const entry of entries) { typed[entry.field] = entry.value; elements[entry.field].value = entry.value; } return {filled: entries.map(entry => entry.field)}; };
+  window.__jobPilottoFillKnownFields = entries => { for (const entry of entries) { typed[entry.field] = entry.value; elements[entry.field].value = entry.value; } return {filled: entries.map(entry => entry.field)}; };
   await fill([
     {field: 'why', value: 'I built our Kubernetes platform at Acme.\n• Add: how many teams used it', category: 'written', use: 'fill', draft: 'draft', confidence: 'medium', source: 'Claude (on the page)'},
     {field: 'inc', value: '• Add: which incident and its cause', category: 'written', use: 'fill', draft: 'outline', confidence: 'low', source: 'Claude (on the page)'}]);

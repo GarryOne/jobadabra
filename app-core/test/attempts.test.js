@@ -55,7 +55,7 @@ test('a group the one reader cannot read: the operator says whether the press wo
 
 test('the fastpath types a wiped box again only as its attempt log allows, then lists it as given up', {skip}, () => {
   const window = openPage(JSDOM, FORM), box = window.document.getElementById('city');
-  window.__jobadabraFillKnownFields([{field: 'city', value: 'Zurich'}]);
+  window.__jobPilottoFillKnownFields([{field: 'city', value: 'Zurich'}]);
   let typedAgain = 0;
   for (let wipe = 0; wipe < 6; wipe++) { box.value = ''; typedAgain += window.__jobadabraRetypeWiped(0); }
   assert.equal(typedAgain, 3, 'three times, not the old five');
@@ -72,7 +72,7 @@ const MENU = '<form><label for="country">Country</label><select id="country"><op
 test('a menu showing another option than the fill picked reads mismatch; a custom menu\'s chip too', {skip}, () => {
   const window = openPage(JSDOM, MENU + '<div class="select__container"><div class="select__single-value">Israel</div><input id="combo" role="combobox"></div>');
   const RB = window.__jobadabraReadBack, menu = window.document.getElementById('country'), combo = window.document.getElementById('combo');
-  window.__jobadabraFillKnownFields([{field: 'country', value: 'CH'}]);
+  window.__jobPilottoFillKnownFields([{field: 'country', value: 'CH'}]);
   assert.equal(RB.stateOf(menu), 'committed');
   menu.value = 'IL';
   assert.equal(RB.stateOf(menu), 'mismatch', 'the page set it to another option');
@@ -83,7 +83,7 @@ test('a menu showing another option than the fill picked reads mismatch; a custo
 
 test('a native menu the page sets back is picked again, at most CAP times, then given up', {skip}, () => {
   const window = openPage(JSDOM, MENU), menu = window.document.getElementById('country');
-  window.__jobadabraFillKnownFields([{field: 'country', value: 'CH'}]);
+  window.__jobPilottoFillKnownFields([{field: 'country', value: 'CH'}]);
   let again = 0;
   for (let round = 0; round < 6; round++) { menu.value = 'IL'; again += window.__jobadabraRetypeWiped(0); }
   assert.equal(again, window.__jobadabraAttempts.CAP, 'picked again within its attempt log');

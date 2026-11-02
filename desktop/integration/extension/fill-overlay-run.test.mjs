@@ -51,10 +51,10 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
     await app.page.waitForFunction(ms => window.__sampledFrom !== undefined && performance.now() - window.__sampledFrom >= ms, LOOK_BY_MS + 20, {timeout: 20000});   // the sampler's own clock: the judge measures from the first sample
     await app.page.evaluate(() => { location.href = 'https://jobs.example.test/form'; });   // the Apply press: a page change, its address carries no mark
     // The fill writes its own end on the page; the worker's verdict reaches its log asynchronously (storage.session.onChanged), so runStates reads until it is in. The hang guard names the states the worker went through.
-    await app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobadabraFill || ''), null, {timeout: 60000})
+    await app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 60000})
       .catch(async error => assert.fail(`the fill never wrote its end on the page: ${error.message}; the worker's states: ${JSON.stringify(await worker.evaluate(() => globalThis.__applyLog))}`));
     states = await runStates(() => worker.evaluate(() => globalThis.__applyLog));
-    pageEnd = await app.page.evaluate(() => document.documentElement.dataset.jobadabraFill || '');
+    pageEnd = await app.page.evaluate(() => document.documentElement.dataset.jobpilottoFill || '');
   } finally { await app.close(); }
   assert.deepEqual(judgeRun(states, samples), [], `the Apply broke its one-piece look (issue #2800); the page's end: ${pageEnd}`);
 });

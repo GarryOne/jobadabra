@@ -13,7 +13,7 @@ const PAGE = `<form><div id="sec">${SECTION(['__input1-inner', '__input2-inner']
 function typed() {
   const window = openPage(JSDOM, PAGE);
   window.__jobadabraNoGuard = true;
-  window.__jobadabraFillKnownFields([{field: '__input1-inner', value: 'Platform'}, {field: '__input2-inner', value: 'P4711'}]);
+  window.__jobPilottoFillKnownFields([{field: '__input1-inner', value: 'Platform'}, {field: '__input2-inner', value: 'P4711'}]);
   return window;
 }
 

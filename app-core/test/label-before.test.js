@@ -65,7 +65,7 @@ test('the describe-form read shows both pages\' boxes as required with their lab
 });
 
 test('the Playwright audit reads the same required mark as the panel and the fill (a class that says required)', { skip }, () => {
-  const required = (html, id) => openPage(JSDOM, html).__jobadabraAuditVisibleFields().find((row) => row.field === id)?.required;
+  const required = (html, id) => openPage(JSDOM, html).__jobPilottoAuditVisibleFields().find((row) => row.field === id)?.required;
   assert.equal(required(FLAT, 'form-validation-field-0'), true, 'validate[required] on a flat form');
   assert.equal(required(FLAT, 'form-validation-field-1'), true, 'validate[required,custom[email]]');
   assert.equal(required(WRAPPED, 'a1'), true, 'is-required');

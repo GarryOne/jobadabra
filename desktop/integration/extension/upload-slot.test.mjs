@@ -76,9 +76,9 @@ const open = async (html, run) => {
 // Runs the real fill; -> what the panel and the report would see.
 const fill = (page, resume, {aliases = [], recipes = {}, choice = null} = {}) => page.evaluate(async ({resume, aliases, recipes, choice}) => {
   window.__jobadabraAliases = aliases; window.__jobadabraRecipes = recipes; window.__jobadabraUploadChoice = choice;
-  const rowsBefore = window.__jobadabraAuditVisibleFields().filter(row => row.type === 'file');
+  const rowsBefore = window.__jobPilottoAuditVisibleFields().filter(row => row.type === 'file');
   const result = await window.__jobadabraExtensionFill([], {}, resume);
-  return {rowsBefore, rowsAfter: window.__jobadabraAuditVisibleFields().filter(row => row.type === 'file'), got: window.got || {}, resumeAttached: result.resumeAttached,
+  return {rowsBefore, rowsAfter: window.__jobPilottoAuditVisibleFields().filter(row => row.type === 'file'), got: window.got || {}, resumeAttached: result.resumeAttached,
     todo: result.todo, uploads: result.operated.filter(item => item.kind === 'upload'), unknown: result.unknownUploads};
 }, {resume, aliases, recipes, choice});
 

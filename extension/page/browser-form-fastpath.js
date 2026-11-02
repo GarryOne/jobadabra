@@ -27,10 +27,10 @@
   const isCombo = element => element.getAttribute('role') === 'combobox';
   // Step timer for the Agent Runs record: helpers stamp themselves; agents add named steps
   // ("dropdowns", "resume") inside a JS call they already make. Times only, never values.
-  window.__jobadabraSteps = window.__jobadabraSteps || [];
-  window.__jobadabraStep = name => {
-    window.__jobadabraSteps.push({name: String(name).slice(0, 40), at: new Date().toISOString()});
-    return window.__jobadabraSteps.length;
+  window.__jobPilottoSteps = window.__jobPilottoSteps || [];
+  window.__jobPilottoStep = name => {
+    window.__jobPilottoSteps.push({name: String(name).slice(0, 40), at: new Date().toISOString()});
+    return window.__jobPilottoSteps.length;
   };
   // What the fill typed, per box: the value, whether the person has touched the box since, how many times it was typed again. A page can clear a box
   // after the fill, more than once (an upload's own autofill reads the file seconds later and rewrites the boxes; a re-render empties it again):
@@ -87,10 +87,10 @@
     return same;
   };
   // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
-  window.__jobadabraFillKnownFields = entries => {
+  window.__jobPilottoFillKnownFields = entries => {
     // The Chrome extension turns the guard off on purpose (it never clicks Submit itself).
-    if (!window.__jobadabraGuardActive && !window.__jobadabraNoGuard) return {error: 'submit guard is inactive'};
-    window.__jobadabraStep('fill known fields');
+    if (!window.__jobPilottoGuardActive && !window.__jobadabraNoGuard) return {error: 'submit guard is inactive'};
+    window.__jobPilottoStep('fill known fields');
     const filled = [], skipped = [];
     for (const item of entries) {
       const key = String(item.field || '');
@@ -253,8 +253,8 @@
   // A menu still on the page's own initial choice (the option its HTML marks selected, else the first): a page default nobody answered.
   // easytemp (9 Oct 2026) preselects Nationalité "Suisse" and Langue maternelle "Suisse-allemand": read as answered, never asked, wrong for the person.
   window.__jobadabraAtPageDefault = el => { const first = [...el.options].findIndex(option => option.defaultSelected); return el.selectedIndex === (first >= 0 ? first : 0); };
-  window.__jobadabraAuditVisibleFields = () => {
-    window.__jobadabraStep('audit');
+  window.__jobPilottoAuditVisibleFields = () => {
+    window.__jobPilottoStep('audit');
     const rows = Array.from(document.querySelectorAll('input, textarea, select'))
       // aria-hidden inputs are react-select's hidden "required" helpers, not fields.
       .filter(el => visible(el) && !el.disabled && !window.__jobadabraReadBack.hiddenAway(el)
@@ -287,7 +287,7 @@
   // insensitive). Typing + Return picks the first partial match ("Male" -> "Female", "4" -> "0"),
   // so use this instead. Returns the live coordinates too, for a trusted click if a site ignores
   // a JS click; verify with the audit afterwards.
-  window.__jobadabraClickOption = wanted => {
+  window.__jobPilottoClickOption = wanted => {
     const norm = t => (window.__jobadabraFold || (x => String(x ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim()))(t);   // accents and case ignored, as page/fold-text.js (this file also runs alone in the agents' pages)
     const options = Array.from(document.querySelectorAll('[class*="option"]'))
       .filter(el => el.offsetParent !== null && !el.children?.length);

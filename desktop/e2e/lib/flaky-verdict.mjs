@@ -7,6 +7,7 @@
 // Job: report health
 import path from 'node:path';
 import {SETUP} from './coverage.mjs';
+import {dataReadBy} from './data-reads.mjs';
 
 /** Directories the step is not mapped by: the extension and the engine are not in the coverage map (it records the desktop main process only), so they count whole. */
 export const WHOLE_DIRS = ['extension/', 'src/'];
@@ -43,15 +44,18 @@ export function importClosure(roots, read) {
 }
 
 /**
- * The files a step runs: its suite file with the harness it imports, the app files the coverage map gives the step (and the launch, which every step runs), and
- * extension/ and src/ whole. A step the map does not know counts the whole desktop/ app: the verdict can then only say "changed" more often, never "flaky" wrongly.
+ * The files a step runs: its suite file with the harness it imports, the app files the coverage map gives the step (and the launch, which every step runs), the data
+ * files those read at run time (lib/data-reads.mjs: the profile template in the wizard's AI ask), and extension/ and src/ whole. A step the map does not know counts the
+ * whole desktop/ app: the verdict can then only say "changed" more often, never "flaky" wrongly.
+ * Why (2 Nov 2026, betas 16 and 17): #2926 changed docs/notion-profile-template.md, which the wizard step's ask carries; comparing code only called the same red twice "flaky".
  * @returns {{files: string[], dirs: string[], mapped: boolean}}
  */
 export function stepFiles({suite, step, map, read}) {
   const entry = map?.suites?.[suite]?.steps;
   const mapped = Boolean(entry?.[step]);
   const app = mapped ? [...Object.keys(entry[step]), ...Object.keys(entry[SETUP] || {})] : [];
-  const files = [...new Set([...importClosure([`desktop/e2e/suites/${suite}.mjs`, ...HARNESS_ROOTS], read), ...app])].sort();
+  const code = [...new Set([...importClosure([`desktop/e2e/suites/${suite}.mjs`, ...HARNESS_ROOTS], read), ...app])];
+  const files = [...new Set([...code, ...code.flatMap(file => dataReadBy(read(file), file))])].sort();
   return {files, dirs: mapped ? [...WHOLE_DIRS] : ['desktop/', ...WHOLE_DIRS], mapped};
 }
 

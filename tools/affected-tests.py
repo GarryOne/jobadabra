@@ -172,6 +172,20 @@ def e2e_reach():
         return None
 
 
+def data_readers(changed):
+    """{changed data file: [code files that read it at run time]} from desktop/e2e/lib/data-reads.mjs, through tools/data-readers.mjs; {} without node or the helper;
+    None when the helper fails: the caller then runs everything, as for any change it cannot map.
+    Why (2 Nov 2026, betas 16 and 17; owner chose "e2e + integration"): docs/notion-profile-template.md, read by desktop/lib/strategy.js into the wizard's AI ask, picked no test."""
+    helper, node = ROOT / 'tools/data-readers.mjs', shutil.which('node')
+    if not node or not helper.is_file():
+        return {}
+    out = subprocess.run([node, str(helper), *changed], cwd=ROOT, capture_output=True, text=True, check=False)
+    try:
+        return json.loads(out.stdout) if out.returncode == 0 else None
+    except ValueError:
+        return None
+
+
 def reaches_changed(paths, changed):
     """Does a test's reach hold a changed file, or a folder it reads whole (a trailing '/') that holds one?"""
     folders = [p for p in paths if p.endswith('/')]
@@ -206,12 +220,42 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
     return picked
 
 
+def pick_python(py_changed, result, why):
+    """The Python tests the changed Python-area files can break, into result['python'] (a pure move out of select, clean-code gate, 2 Nov 2026): by import
+    reach and mention; 'all' for a non-code input the engine reads, or for an engine file no test reaches."""
+    edges = py_graph()
+    changed_paths = {ROOT / f for f in py_changed}
+    non_py_src = [f for f in py_changed if not f.endswith('.py') and f.startswith(('src/', 'config/', 'templates/'))]
+    if non_py_src:
+        result['python'] = 'all'; why['python'] = f'non-code input read by the engine: {non_py_src[0]}'
+        return
+    names = {f: py_module_name(ROOT / f) for f in py_changed if f.endswith('.py')}
+    picked = []
+    for t in sorted((ROOT / 'tests').glob('test_*.py')):
+        reach = closure(t, edges)
+        if reach is None or reach & changed_paths or mentions(read(t), py_changed, names):
+            picked.append(t.stem)
+    result['python'] = picked
+    orphans = [f for f in names if f.startswith('src/') and not any(
+        (ROOT / f) in (closure(t, edges) or {ROOT / f}) for t in (ROOT / 'tests').glob('test_*.py'))]
+    if orphans and not picked:   # an engine file no test reaches: nothing could fail, so run the lot rather than nothing
+        result['python'] = 'all'; why['python'] = f'no test reaches {orphans[0]}'
+
+
 def select(changed, base_ref=None):
     changed = sorted(set(changed))
     result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'e2e': [], 'integration': [], 'reasons': {}}
     why = result['reasons']
     if not changed:
         return result
+    # A data file the app or the engine reads by path (docs, config, JSON) counts as its readers changed: their tests run (lib/data-reads.mjs).
+    readers = data_readers(changed)
+    if readers is None:
+        why['all'] = ['tools/data-readers.mjs failed']
+        return {**{k: 'all' for k in AREAS}, 'reasons': why}
+    if readers:
+        why['data'] = readers
+        changed = sorted(set(changed) | {reader for found in readers.values() for reader in found})
     relevant = [f for f in changed if not NO_TEST_EFFECT.search(f)]
     if not relevant:
         return result
@@ -231,23 +275,7 @@ def select(changed, base_ref=None):
     # Python
     py_changed = [f for f in relevant if areas['python'](f)]
     if py_changed:
-        edges = py_graph()
-        changed_paths = {ROOT / f for f in py_changed}
-        non_py_src = [f for f in py_changed if not f.endswith('.py') and f.startswith(('src/', 'config/', 'templates/'))]
-        if non_py_src:
-            result['python'] = 'all'; why['python'] = f'non-code input read by the engine: {non_py_src[0]}'
-        else:
-            names = {f: py_module_name(ROOT / f) for f in py_changed if f.endswith('.py')}
-            picked = []
-            for t in sorted((ROOT / 'tests').glob('test_*.py')):
-                reach = closure(t, edges)
-                if reach is None or reach & changed_paths or mentions(read(t), py_changed, names):
-                    picked.append(t.stem)
-            result['python'] = picked
-            orphans = [f for f in names if f.startswith('src/') and not any(
-                (ROOT / f) in (closure(t, edges) or {ROOT / f}) for t in (ROOT / 'tests').glob('test_*.py'))]
-            if orphans and not picked:   # an engine file no test reaches: nothing could fail, so run the lot rather than nothing
-                result['python'] = 'all'; why['python'] = f'no test reaches {orphans[0]}'
+        pick_python(py_changed, result, why)
     # Node areas
     graph = None
     # An engine edit (src/) or a fixture/helper under tests/ (a desktop test may read it) counts; an edit to a Python test file itself (tests/test_*.py) cannot change what the app does (11 Oct 2026: it started ~130 desktop tests).

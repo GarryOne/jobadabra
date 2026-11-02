@@ -126,6 +126,23 @@ class PrBodyTest(unittest.TestCase):
         git(self.repo, 'add', '.'); git(self.repo, 'commit', '-qm', 'Change a test')
         self.assertEqual(run(ok + 'No visual: a test only\n').returncode, 0, 'a change to no screen needs no image')
 
+    def test_the_screen_change_messages_print_whole_and_never_run_their_own_command(self):
+        # 2 Nov 2026 (jobadabra-web #313): the messages carried `node tools/pr-assets.mjs pr-assets-<branch> <png>...` in backticks inside a double-quoted echo, so bash ran it as a
+        # command substitution and the owner of the PR got "command substitution: syntax error near unexpected token `<'" instead of the message. The class: every message in this file.
+        ok = '### ✅ X\n\n- **Why:** the owner saw it\n- **Impact:** the page reads right\n\n**Unblocks:** the next PR\n\n| Area | Impact | How |\n|---|---|---|\n| Real users | ⚪ Low | x |\n| Form filling | — None | x |\n| Admin data accuracy | — None | x |\n| Offline replays | — None | x |\n| Tests & harness | — None | x |\n| Development speed | — None | x |\n| Cost | — None | x |\n\n| | Before | After |\n|---|---|---|\n| x | 1 | 2 |\n'
+        summary = self.tmp / 'summary.md'
+        for screen, tail, needs in (('desktop/renderer/pages/jobs.js', '', 'node tools/pr-assets.mjs pr-assets-<branch> <png>... publishes a git tag'),
+                                    ('web/public/index.html', 'No screenshots: nothing drawn changed\n', 'node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=<owner/repo>')):
+            git(self.repo, 'reset', '-q', '--hard', self.base)
+            (self.repo / screen).parent.mkdir(parents=True, exist_ok=True); (self.repo / screen).write_text('x\n')
+            git(self.repo, 'add', '.'); git(self.repo, 'commit', '-qm', 'Change a screen')
+            summary.write_text(ok + tail)
+            result = subprocess.run(['bash', str(ROOT / 'tools' / 'pr-body.sh'), self.base, f'--body={summary}'], cwd=self.repo, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 2, screen)
+            self.assertNotIn('command substitution', result.stderr, screen)
+            self.assertNotIn('syntax error', result.stderr, screen)
+            self.assertIn(needs, result.stderr, screen)
+
     def test_more_than_five_before_after_pairs_are_refused(self):
         # Owner, 17 Oct 2026: "max 5 pairs". Ten images pass, eleven are refused, and the message names the rule.
         head = '### ✅ X\n\n- **Why:** the owner saw it\n- **Impact:** the page reads right\n\n**Unblocks:** the next PR\n\n| Area | Impact | How |\n|---|---|---|\n| Real users | ⚪ Low | x |\n| Form filling | — None | x |\n| Admin data accuracy | — None | x |\n| Offline replays | — None | x |\n| Tests & harness | 🟢 High | x |\n| Development speed | ⚪ Low | x |\n| Cost | — None | x |\n\n| | Before | After |\n|---|---|---|\n| a | 1 | 2 |\n\n'

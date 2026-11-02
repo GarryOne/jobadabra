@@ -1,4 +1,5 @@
 // The daily watch list (owner, 17 Oct 2026): one pool row per multi-step platform, recorded LIVE every day; its cap, its comparison with the row's last live run, its one message. Pure.
+// Job: report health
 // A watch row is a pool row of desktop/e2e/smoke-sites.json with "stage": "watch" (the life cycle's Daily watch stage); the batch adds a row when it finds a new platform.
 // The verdict per row is the discovery judge's (lib/discovery-judge.mjs); a flow is WORSE when its verdict got more severe, it reached an earlier step, it filled fewer fields on the same
 // posting (lib/record-sites.mjs compare), or its journey check failed after passing. A row that was not measured (held, bot wall, gone posting) is never worse and never the next baseline.

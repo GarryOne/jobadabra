@@ -1,4 +1,5 @@
 // Collects the self-healing loop's numbers and publishes them to the owner's page /self-heal (self-heal-stats.yml, every 3 hours).
+// Job: report health
 //   node selfheal-stats.mjs [--publish]        (needs gh with GH_TOKEN; --publish needs SELFHEAL_PUBLISH_KEY, optional SELFHEAL_URL)
 // The site keeps one snapshot per day (D1 selfheal_snapshots), so the page shows a trend, not only today.
 import {loopQuality} from './lib/loop-quality.mjs';

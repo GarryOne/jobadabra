@@ -1,4 +1,5 @@
 // The discovery batch's verdict per recorded row, its one Telegram message and its spend line (owner, 17 Oct 2026). Pure: the CLI (discovery-report.mjs) passes the day report in.
+// Job: report health
 // The judge is the one the recordings already use: the row's ending and cause (lib/ending.mjs), the form judge's "blocked", and the shortfall (fields reached but not explained). A row says:
 //   fine           the form is reached and what is left is the person's (or a stop the person is told about)
 //   fields-left    the form is reached but required fields stayed empty (a field we missed, the AI declined, a control it could not see, a shortfall)

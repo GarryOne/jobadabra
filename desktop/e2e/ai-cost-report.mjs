@@ -1,4 +1,5 @@
 // Every scheduled AI job tells the owner's page https://www.jobadabra.top/ai-cost what it spent (site/src/aicost.js). Never fails a job:
+// Job: report health
 // a missing key, an unreadable record or an unreachable site only prints a line.
 //   node ai-cost-report.mjs --job <id> (--execution <claude-code-action output> | --file <{usd, calls}> | --usd <n> [--calls <n>]) [--suffix <matrix key>] [--provider anthropic|openai]
 //   node ai-cost-report.mjs --billed [--days 7]     what Anthropic itself billed per day (Admin API, ANTHROPIC_ADMIN_KEY), to see what the jobs miss;

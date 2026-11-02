@@ -1,4 +1,5 @@
 // node discovery-pick.mjs <out dir> <states dir>: the daily discovery batch's first job (.github/workflows/record-sites.yml, schedule). Reads the site's input
+// Job: report health
 // (GET /applying/discovery-input, Bearer REPLAYS_PUBLISH_KEY), the pool and the earlier batch runs' own state files (<states dir>/<run>/discovery.json: their rows and spend),
 // runs the picker (lib/discovery-pick.mjs) and writes <out dir>/discovery-rows.json (rows in the pool's format, read by the recorder as RECORD_SITES) and picked.json.
 // Prints what it picked and why; sets count/only/max_usd for the next job through GITHUB_OUTPUT; when the week's cap stops the batch, writes cap-alert.txt once a week.

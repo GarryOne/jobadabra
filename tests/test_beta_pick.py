@@ -209,7 +209,7 @@ class BetaPickTag(unittest.TestCase):
         done = self.run_script(f"{self.sha['D']} 0")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('in that one run (the last 2 took 17–19 min);', done.stdout, 'measured on the finished betas, never typed (owner, 2 Nov 2026: "why 45 mins?")')
-        self.assertNotIn('45', done.stdout)
+        self.assertNotIn('about 45 minutes', done.stdout)   # the typed phrase: a bare '45' can be in the printed short sha
 
     def test_a_pick_at_main_head_runs_on_main_and_pushes_nothing(self):
         done = self.run_script(f"{self.sha['D']} 0")

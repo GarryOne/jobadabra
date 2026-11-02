@@ -16,7 +16,7 @@ Owner, 15 Oct 2026: "when triggered, present me this report". One table, read in
   (`git log origin/main --since=7.days --name-only --format=@@%h` grouped by file, then by area: the files one subject lives in), and per open session the tries on its current symptom.
   An area with **3+ fixes this week**, or a session on **try 3** of one symptom, is a circle: name it 🌀 under the table (area, count, the last 3 commit subjects) and **propose the step back yourself**:
   the intended behaviour in the owner's words (states, their one owner, the verdicts that change them), what to simplify or replace, who builds it, as a sketch and one AskUserQuestion.
-  Never brief "try N+1" on a circle. Golden rule: `~/.claude/CLAUDE.md` "Going in circles"; once `tools/area-circles.mjs` lands, read its count instead of the git one-liner.
+  Never brief "try N+1" on a circle. Golden rule: `~/.claude/CLAUDE.md` "Going in circles"; the count is the git one-liner above (no counter tool).
 - **Ask each running session for 3 lines only when its state is not visible** from PRs and runs: (1) done since last report, (2) what blocks it, (3) ETA. `SendMessage`, first line self-contained; do not wait more than ~3 min for replies: mark "no reply" and use what is measured.
 
 ## 2. The table (exact columns, a few words per cell)

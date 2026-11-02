@@ -7,4 +7,4 @@ Why (owner, 27 Oct 2026): "when AI just goes and builds things, generates codes,
 - **A fix for something nobody saw:** no failing run, user report, owner request, or test that failed before.
 - **A refactor, rename or reorganisation** with no reason it unblocks anything.
 - **A feature or option nobody asked for:** scope beyond the request the PR quotes.
-- **Undoing or redoing a PR from the last 7 days** without saying why the first was wrong (the `AREA-CIRCLES` line shows the neighbours).
+- **Undoing or redoing a PR from the last 7 days** without saying why the first was wrong (look at the earlier PRs on the same files).

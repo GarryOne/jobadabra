@@ -69,7 +69,8 @@ class QualityIsPooledAndGatedByMainsOwnSpread(unittest.TestCase):
     def test_below_ten_measured_main_runs_quality_is_never_red(self):
         nine = [run([4, 4, 4, 4, 4, 4], [150] * 6)] * 9
         verdict = gate.compare(run([0] * 6, [150] * 6), nine)
-        self.assertEqual((verdict['state'], verdict['quality']['mode'], verdict['quality']['measured']), ('success', 'shown', 9))
+        # Owner, 2 Nov 2026 ("still, everything is 0"): six presses with no right job are grey, never green; quality itself is still never red below ten runs.
+        self.assertEqual((verdict['state'], verdict['quality']['mode'], verdict['quality']['measured'], verdict['quality']['red']), ('neutral', 'shown', 9, False))
 
     def test_with_ten_measured_runs_below_average_minus_two_spreads_is_red_above_is_green(self):
         totals = [14, 16, 13, 18, 15, 17, 14, 16, 15, 17]   # mean 15.5, sample spread 1.6 -> floor 12.3
@@ -158,7 +159,7 @@ class TheFilesRoundTrip(unittest.TestCase):
             self.assertEqual(gate.load_results(tmp / 'main-run')[4]['local'], 1, "a main run's verdict.json is the next floor")
             self.assertEqual(len(saved['personas']), 6)
             table = (tmp / 'main-run' / 'table.md').read_text()
-            self.assertIn(gate.COST, table)
+            self.assertIn('AI engine not reported', table)
             self.assertIn('p4 Warehouse Operator, Zurich', table)
 
 
@@ -203,8 +204,9 @@ class AGateThatSawNoJobHasMeasuredNothing(unittest.TestCase):
             self.assertIn('measured nothing', saved['head'])
 
     def test_one_persona_that_saw_a_job_is_a_measurement_and_a_missing_count_is_unknown_not_zero(self):
-        self.assertEqual(gate.compare(run([0] * 6, [150] * 6, found=[0, 0, 4, 0, 0, 0]), [])['state'], 'success')
-        self.assertEqual(gate.compare(run([0] * 6, [150] * 6), [])['state'], 'success', 'found is None in older recorded runs: unknown, not 0')
+        self.assertEqual(gate.compare(run([0, 0, 1, 0, 0, 0], [150] * 6, found=[0, 0, 4, 0, 0, 0]), [])['state'], 'success')
+        self.assertEqual(gate.compare(run([0, 0, 1, 0, 0, 0], [150] * 6), [])['state'], 'success', 'found is None in older recorded runs: unknown, not 0')
+        self.assertEqual(gate.compare(run([0] * 6, [150] * 6, found=[0, 0, 4, 0, 0, 0]), [])['state'], 'neutral', 'jobs found but none right: not a pass')
 
     def test_a_main_run_that_measured_nothing_is_not_one_of_the_ten(self):
         self.assertEqual(gate.quality(TODAY, [TODAY] * 10)['measured'], 0)
@@ -225,7 +227,7 @@ class AGateThatSawNoJobHasMeasuredNothing(unittest.TestCase):
         mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in totals]
         verdict = gate.compare(run([0] * 6, [150] * 6, found=[5] * 6), mains)
         self.assertEqual((verdict['quality']['mode'], verdict['quality']['floor'], verdict['quality']['red']), ('shown', None, False))
-        self.assertEqual(verdict['state'], 'success')
+        self.assertEqual(verdict['state'], 'neutral', 'not red, and not a pass either: no persona found a right job (owner, 2 Nov 2026)')
         self.assertIn('not gated (main reached 0 right jobs', verdict['head'])
 
     def test_a_pr_is_not_held_above_the_lowest_total_main_reached_when_that_is_a_job_or_more(self):
@@ -353,7 +355,7 @@ class TheWorkflowRunsOnCodex(unittest.TestCase):
             self.assertEqual(row['usd'], 0)
             self.assertEqual(row['billing'], 'subscription')
             table = gate.table(gate.compare({1: row}, []))
-            self.assertIn('Codex subscription', table)
+            self.assertIn('subscription, no API charge', table)
             self.assertNotIn('cap $', table)
 
     def test_a_persona_over_its_cost_cap_is_red_and_the_cost_is_in_the_table(self):

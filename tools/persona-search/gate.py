@@ -30,7 +30,9 @@ QUALITY_FLOOR_MIN = 1
 # a PR was held to a higher bar than main itself reached (owner, 28 Oct 2026: "a PR is red only when its diff broke it"). The floor never rises above the lowest total
 # of main's measured runs; while main's lowest is 1 or more, the floor of 1 above still holds, so a search that finds nothing is red on a healthy main.
 PERSONA_CAP_USD = 0.10   # Why (30 Oct 2026, owner; supersedes 27 Oct): Codex runs report $0 API charge; this cap only guards legacy API-key measurements (#2259: $0.045-0.079).
-COST = 'Codex subscription (ChatGPT plan; no API charge)'
+# Why (2 Nov 2026, owner: "still, everything is 0"; run 41376694937): the header said "Codex subscription" while Claude answered, because Codex's week was used up.
+# The engines come from the "AI: <engine> / <model> (<fell back from>)" line the CI client prints once per distinct answer (desktop/e2e/lib/broker-client.mjs aiLine).
+ENGINE_LINE = re.compile(r'^AI: (\S+)(?: / (\S+))?(?: \(([^)]*)\))?\s*$', re.M)   # aiLine prints engine and model, or only one of them
 
 
 def label(n):
@@ -101,6 +103,43 @@ def cut_note(seconds, scored, log):
     return f'cut by the cap after {seconds} s with no job scored' + (f'; longest wait for the AI {longest} s' if longest is not None else ''), longest
 
 
+def engines_of(log):
+    """The AI answers a press log names: "claude (claude-haiku-5-5; codex ran-out)", several joined by " + "; '' when it names none or there is no log."""
+    try:
+        text = Path(log).read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return ''
+    found = []
+    for engine, model, fell in ENGINE_LINE.findall(text):
+        inner = '; '.join(x for x in (model, fell) if x)
+        label = f"{engine} ({inner})" if inner else engine
+        if label not in found:
+            found.append(label)
+    return ' + '.join(found)
+
+
+def search_text(search):
+    """"6 roles; places sofia, bulgaria; countries none known" from a press row's `search` (run.mjs searchSummary)."""
+    return f"{search.get('roles', 0)} roles; places {', '.join(search.get('places') or []) or 'none'}; countries {', '.join(search.get('countries') or []) or 'none known'}"
+
+
+def funnel_note(funnel):
+    """One line on where a press's time went, from its funnel: "employers named at 43 s; time ran out for: job boards, employer sites", or the web search
+    that never started; '' when there is nothing to say. Why (2 Nov 2026, run 41376694937): p2-p4 found 0 because the time ran out, p1/p5 because the web search never started."""
+    parts = []
+    if funnel.get('places_worked_out_s') is not None:
+        parts.append(f"places worked out at {funnel['places_worked_out_s']} s")
+    if funnel.get('web_search_started_s') is not None:
+        parts.append(f"web search started at {funnel['web_search_started_s']} s")
+    if funnel.get('web_search_skipped'):
+        parts.append('web search never started (no places or roles known)')
+    if funnel.get('employers_named_s') is not None:
+        parts.append(f"employers named at {funnel['employers_named_s']} s")
+    if funnel.get('time_up'):
+        parts.append('time ran out for: ' + ', '.join(funnel['time_up']))
+    return '; '.join(parts)
+
+
 def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
@@ -113,6 +152,11 @@ def result(n, out):
         press = json.loads((out / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[0])
         press_billing = press.get('billing', '')
         ai = (press.get('funnel') or {}).get('ai_usd')
+        note = funnel_note(press.get('funnel') or {})
+        if note and (press.get('funnel') or {}).get('web_search_skipped') and press.get('search'):
+            note += '; searched with ' + search_text(press['search'])   # the config the web search could not start with (run 41376694937)
+        if note:
+            row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
         cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
@@ -121,6 +165,9 @@ def result(n, out):
         starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
+    engine = engines_of(out / 'run.log')
+    if engine:
+        row['engine'] = engine
     unavailable = refused_reason(out / 'run.log')
     if unavailable:
         row['unavailable'] = unavailable
@@ -180,7 +227,7 @@ def judge_one(row, mains):
         reasons.append(f"the press failed (exit {row.get('code')}, {row.get('crashes', 0)} crash(es))")
     if row.get('seconds', 0) > PRESS_LIMIT:
         reasons.append(f"press took {row['seconds']} s (> {PRESS_LIMIT})")
-    if row.get('cost_unmeasured'):
+    if row.get('cost_unmeasured') and not row.get('cut'):   # a press the budget cut never reached the step that measures its cost (run 41379413905); the cut note says so
         reasons.append('the press cost was not measured')
     if (row.get('usd') or 0) > PERSONA_CAP_USD:
         reasons.append(f"cost ${row['usd']:.3f} over the ${PERSONA_CAP_USD} cap")
@@ -195,6 +242,13 @@ def _nothing(run):
     Invariant: only an explicit `found == 0` counts; a missing `found` (older recorded runs, errored rows) is unknown, never zero."""
     rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
     return all(r is not None and not r.get('not_measured') and not r.get('error') and type(r.get('found')) is int and r['found'] == 0 for r in rows)
+
+
+def _no_right_jobs(run):
+    """True when every persona was measured and the blind judge called no job right (role AND place) on any of the six. Why (2 Nov 2026, owner: "still, everything is 0"):
+    with main's lowest at 0 the quality gate is "not gated", so six presses with nothing right read 🟢; a check that finds nothing must never look like a pass."""
+    rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
+    return all(r is not None and not r.get('not_measured') and not r.get('error') and type(r.get('local')) is int for r in rows) and sum(r['local'] for r in rows) == 0
 
 
 def _total(run):
@@ -233,7 +287,8 @@ def compare(pr, main_runs):
         unmeasured += bool(row and row.get('not_measured'))
         red += bool(reasons)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
-                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured'), 'cut': (row or {}).get('cut', '')})
+                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured'), 'cut': (row or {}).get('cut', ''),
+                     'engine': (row or {}).get('engine', ''), 'funnel_note': (row or {}).get('funnel_note', '')})
     quality_ = quality(pr, main_runs)
     reason = ''   # why every press read nothing, when the press log says (the AI was refused); set below, returned for the table
     nothing = _nothing(pr)   # grey in every mode, with or without main: a gate that saw no job at all has measured nothing, and is never read as a pass (#2901)
@@ -247,6 +302,9 @@ def compare(pr, main_runs):
         reason = next((r.get('unavailable') for r in (pr.get(n) or {} for n in range(1, len(PERSONAS) + 1)) if r.get('unavailable')), '')
         if reason:   # still grey, never a pass: the first line names the cause instead of a table of zeros
             head = f"⚪ {'web search' if 'search' in reason else 'AI'} unavailable: {reason}; no press read a job (not a pass)"
+    elif _no_right_jobs(pr):
+        state, head = 'neutral', f'⚪ found 0 right jobs on all six: not a pass (the blind judge called none right role and right place)'
+        nothing = True   # the table marks every row grey, as for a run that measured nothing
     elif unmeasured:
         state, head = 'neutral', f'⚪ not measured ({unmeasured} of {len(PERSONAS)}): {next(r["not_measured"] for r in rows if r["not_measured"])}'
     else:
@@ -258,12 +316,23 @@ def compare(pr, main_runs):
     return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason}
 
 
+def cost_label(verdict):
+    """The AI line of the header: the engines the presses logged ("claude (claude-haiku-5-5; codex ran-out)"), else that none was reported; subscription runs say no API charge."""
+    engines = []
+    for r in verdict['rows']:
+        for one in (r.get('engine') or '').split(' + '):
+            if one and one not in engines:
+                engines.append(one)
+    label = ' + '.join(engines) or 'AI engine not reported'
+    return label + (' · subscription, no API charge' if any(r.get('billing') == 'subscription' for r in verdict['rows']) else '')
+
+
 def table(verdict):
     spent = sum(r['usd'] or 0 for r in verdict['rows'])
     cap = '' if any(r.get('billing') == 'subscription' for r in verdict['rows']) else f' (legacy API cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})'
     if verdict.get('unavailable'):   # no table of zeros: nothing was searched, so there is nothing to compare
-        return f"🔍 **Search check:** {verdict['head']} · {COST}\n\n<sub>Presses ran, but their AI was refused ({verdict['unavailable']}), so no job was read and nothing was judged. Grey, never a pass; it measures again once the AI answers.</sub>\n"
-    lines = [f"🔍 **Search check:** {verdict['head']} · {COST} · cost ${spent:.2f}{cap}", '',
+        return f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)}\n\n<sub>Presses ran, but their AI was refused ({verdict['unavailable']}), so no job was read and nothing was judged. Grey, never a pass; it measures again once the AI answers.</sub>\n"
+    lines = [f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)} · cost ${spent:.2f}{cap}", '',
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'
@@ -272,8 +341,11 @@ def table(verdict):
             mark += f" {r['cut']}"
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
+    notes = [f"{r['label'].split(' ')[0]}: {r['funnel_note']}" for r in verdict['rows'] if r.get('funnel_note') and (r['local'] in (0, None) or r.get('reasons'))]
+    if notes:   # where a press that found no right job spent its time (funnel.py), one line each
+        lines += ['', '<sub>Where the time went: ' + ' · '.join(notes) + '</sub>']
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). Grey: all six judges saw 0 jobs (measured nothing, not a pass).</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). Grey: all six judges saw 0 jobs, or none of the six found a right one (not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
 

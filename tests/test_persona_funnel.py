@@ -40,11 +40,31 @@ class FunnelTest(unittest.TestCase):
                              '[6s] Job boards: the web search for trade and local boards did not answer (TimeoutError)'])
         self.assertEqual((out['web_searches'], out['web_found']), (2, 0))
 
+    def test_where_the_time_went_and_whether_the_web_search_started(self):
+        """Run 41376694937 (2 Nov 2026): p2-p4 found 0 although their web search started, because the time budget ended before any employer site or
+        board was read; p1/p5 never started the web search. The funnel says which, so nobody has to read the log."""
+        out = funnel.funnel(['[10s] Places: worked out 1 place word with AI: cluj',
+                             '[10s] Job boards: searching the web for trade and local boards (your API key)',
+                             '[43s] Employers: 109 of 1,372 in your places hire for your kind of role; the others are left out.',
+                             '[89s] ⏱ Time is up (1 min 29 s) for job boards: 4 boards wait for the next search',
+                             '[89s] ⏱ Time is up (1 min 29 s) for employer sites: 108 sites wait for the next search',
+                             '[90s] ⏱ Time is up (1 min 30 s) for job boards: 4 boards wait for the next search'])
+        self.assertEqual((out['places_worked_out_s'], out['web_search_started_s'], out['employers_named_s']), (10, 10, 43))
+        self.assertEqual(out['time_up'], ['job boards', 'employer sites'])   # each phase once, in the order it ran out
+        self.assertFalse(out['web_search_skipped'])
+        skipped = funnel.funnel(['[59s] Job boards: no web search: this search names no places or roles'])
+        self.assertTrue(skipped['web_search_skipped'])
+        self.assertIsNone(skipped['web_search_started_s'])
+        self.assertEqual(funnel.funnel([])['time_up'], [])
+
     def test_the_engine_still_prints_each_line_the_funnel_reads(self):
         printed = {   # file -> the literal text of the print each funnel pattern reads
             'src/daily_helpers.py': ["print(f'Employers: {len(for_kind)} of {len(in_places)} in your places hire for your kind of role"],
             'src/sources/found_boards.py': ['print(f"Job boards found: {board[\'name\']} {len(found)} job(s), {len(relevant)} relevant'],
-            'src/sources/board_web.py': ['print(f"Job boards: a web search found ', 'Job boards: the web search for trade and local boards did not answer'],
+            'src/sources/board_web.py': ['print(f"Job boards: a web search found ', 'Job boards: the web search for trade and local boards did not answer',
+                                         'Job boards: no web search: this search names no places or roles'],
+            'src/time_budget.py': ["print(f'⏱ Time is up ({spent // 60} min {spent % 60:02d} s) for {stage}: "],
+            'src/places.py': ['print(f"Places: worked out {len(words)} place word'],
             'src/scout_run.py': ["print(f'Scout: employers with no job site found are looked up with a web search"],
             'src/run_counts.py': ["PREFIX = 'Run counts: '", 'f"{PREFIX}looked={'],
             'src/sources/feed_scan.py': ["Ticker('Reading employer job sites'"],
@@ -90,6 +110,25 @@ class RunPathsTest(unittest.TestCase):
 
     def test_each_press_row_has_its_funnel(self):
         self.assertIn("funnel: metrics('funnel.py'", self.RUN)
+
+    def test_each_press_row_has_the_search_it_ran_with_and_the_log_says_it_first(self):
+        """Run 41376694937: nobody could tell why p1/p5 never started their web search, because the artifact held no search.json or places.json."""
+        self.assertIn("search: searchSummary()", self.RUN)
+        self.assertIn("console.log(`Search: ${", self.RUN)
+
+    def test_a_search_that_never_started_its_web_search_shows_what_it_ran_with(self):
+        import json
+        import tempfile
+        import gate
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / 'draw').mkdir()
+            funnel_row = {'web_search_skipped': True, 'employers_named_s': 45, 'time_up': []}
+            search = {'roles': 6, 'places': ['sofia', 'bulgaria'], 'countries': []}
+            (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 126, 'search': search, 'funnel': funnel_row}) + '\n')
+            note = gate.result(1, out)['funnel_note']
+        self.assertIn('web search never started (no places or roles known)', note)
+        self.assertIn('searched with 6 roles; places sofia, bulgaria; countries none known', note)
 
 
 if __name__ == '__main__':

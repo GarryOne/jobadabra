@@ -334,8 +334,36 @@ class ArtifactSecretsTests(unittest.TestCase):
             for extra in ({}, {'REQUIRED': ''}):
                 result = self.scan(folder, E2E_ARTIFACT_SECRET_NAMES='REQUIRED', **extra)
                 self.assertEqual(result.returncode, 1)
-                self.assertEqual(result.stdout.strip(), 'REQUIRED')
+                self.assertEqual(result.stdout.strip(), '::error title=Artifact upload blocked::REQUIRED had no value in this job (the step that sets it failed '
+                                 'or did not run), so a scan would be partial: nothing is uploaded')
                 self.assertEqual(result.stderr, '')
+
+    def test_every_blocked_upload_says_why_in_its_own_annotation(self):
+        # Why (2 Nov 2026, owner on beta 18: "why the errors are not more descriptive, but saying only: "Process completed with exit code 1." ?" → "Keep failing, say why"):
+        # the scan stays fail-closed; its own ::error:: carries the reason, never a value.
+        def annotation(result):
+            lines = [line for line in result.stdout.splitlines() if line.startswith('::error title=Artifact upload blocked::')]
+            self.assertEqual(len(lines), 1, result.stdout)
+            return lines[0]
+        with tempfile.TemporaryDirectory() as folder:
+            with zipfile.ZipFile(Path(folder) / 'trace-apply.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr('trace.trace', 'fake-notion-secret-123456')
+            hit = annotation(self.scan(folder))
+            self.assertIn('E2E_NOTION_TOKEN_APPLY', hit)
+            self.assertIn('trace-apply.zip', hit)
+        unset = subprocess.run(['python3', str(SCANNER), '.'], env={'PATH': os.environ.get('PATH', '')}, capture_output=True, text=True)
+        self.assertEqual(unset.returncode, 1)
+        self.assertIn('E2E_ARTIFACT_SECRET_NAMES is not set', annotation(unset))
+        env = {'PATH': os.environ.get('PATH', ''), 'E2E_ARTIFACT_SECRET_NAMES': ''}
+        none = subprocess.run(['python3', str(SCANNER)], env=env, capture_output=True, text=True)
+        self.assertEqual(none.returncode, 1)
+        self.assertIn('no artifact paths', annotation(none))
+
+    def test_an_annotation_keeps_to_one_line(self):
+        spec = importlib.util.spec_from_file_location('scan_e2e_artifacts', SCANNER)
+        scanner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scanner)
+        self.assertEqual(scanner.annotation('50% done\nnext'), '::error title=Artifact upload blocked::50%25 done%0Anext')
 
     def test_short_values_are_skipped_by_name_and_eight_characters_are_scanned(self):
         with tempfile.TemporaryDirectory() as folder:

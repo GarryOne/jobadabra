@@ -82,17 +82,29 @@ def clean_names(names):
     return out[:MAX_NAMES]
 
 
-def words_of(search):
-    """The plain place words of a search that may need working out: not a regex, not one of the fixed regions, not shorter than three letters."""
+def fragment_place_words(fragment):
+    """The plain place words one location fragment stands for: its own word, or each spelling of an alternation of plain words ("sofia|софия", `\\bwien\\b|\\bvienna\\b`);
+    [] for a real regex. Why (2 Nov 2026, owner: the Search check "still showing 0"; #2974 p1): the strategy draft wrote Sofia's two spellings as one fragment, readable() shows
+    any "|" as a regex and the places were skipped: never asked, no country, no board web search. A plain-word alternation is the places it names, in every language."""
     from .notion.search_settings import readable
+    word = readable(fragment).strip('"')
+    if not word.startswith('/'):
+        return [word]
+    parts = [readable(part).strip('"') for part in fragment.split('|')]
+    return parts if len(parts) > 1 and not any(part.startswith('/') for part in parts) else []
+
+
+def words_of(search):
+    """The plain place words of a search that may need working out: not a regex (an alternation of plain spellings is each spelling), not one of the fixed regions,
+    not shorter than three letters."""
     from .regions import region_of
     found = []
     for key in ('top_tier', 'country_wide', 'abroad'):
         for fragment in ((search.get('locations') or {}).get(key) or []):
-            word = readable(fragment).strip('"')
-            if word.startswith('/') or len(word) < 3 or region_of(fragment) or word in found:
-                continue
-            found.append(word)
+            for word in fragment_place_words(fragment):
+                if len(word) < 3 or region_of(fragment) or word in found:
+                    continue
+                found.append(word)
     return found
 
 
@@ -107,16 +119,15 @@ def _country_named(word):
 def countries(search, cache=None, limit=3):
     """The countries the search's places are in, the user's first places first (at most `limit`; None: all, as a region's every country):
     Swiss region words from the fixed table (src/regions.py), every other word from what the model said. [] when none is known yet."""
-    from .notion.search_settings import readable
     from .regions import region_of
     cache = load() if cache is None else cache
     found = []
     for key in ('top_tier', 'country_wide', 'abroad'):
         for fragment in ((search.get('locations') or {}).get(key) or []):
-            word = readable(fragment).strip('"')
-            for country in ['Switzerland'] if region_of(fragment) else (cache.get(_key(word)) or {}).get('countries') or _country_named(word):
-                if country not in found:
-                    found.append(country)
+            for word in ([None] if region_of(fragment) else fragment_place_words(fragment)):
+                for country in ['Switzerland'] if word is None else (cache.get(_key(word)) or {}).get('countries') or _country_named(word):
+                    if country not in found:
+                        found.append(country)
     return found if limit is None else found[:limit]
 
 

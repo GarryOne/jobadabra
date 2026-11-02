@@ -87,7 +87,7 @@ test('in-process regeneration reproduces the committed bytes without a subproces
   }
   const {captureManifest} = await import('../../../../tools/ai-format-capture.mjs');
   const expected = fs.readFileSync(FILE, 'utf8');
-  assert.equal(await captureManifest(), expected);
+  assert.equal(await captureManifest(), expected, 'the committed manifest is stale (a line of an engine sender moved): run python3 tools/ai-format-python-capture.py && node tools/ai-format-capture.mjs');   // both steps: #2977 refreshed only the first and went red twice
   assert.equal(await captureManifest(), expected, 'second capture must not reuse mutable cache/storage');
 });
 

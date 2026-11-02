@@ -105,6 +105,14 @@ test("the owner's beta case: the broker refuses on its own-share budget inside a
   } finally { console.log = quiet; delete process.env.E2E_SUITE; }
 });
 
+test('a broker refusal names the AI broker (it runs Codex, Claude or Free AI), never only Codex', () => {
+  const lines = [], log = console.log;
+  console.log = line => lines.push(String(line));
+  try { noteBrokerCapped('broker: fallback:search-unsupported', {E2E_SUITE: 'search'}); } finally { console.log = log; takeCapped(); }
+  assert.deepEqual(lines, ['ai-capped: search (AI broker: broker: fallback:search-unsupported)']);
+  assert.match(capMessage(null, {}, 'broker: budget:own-share'), /the AI broker said no/);
+});
+
 test('a provider refusal keeps its cause without claiming broker credit or switching providers', () => {
   const lines = [], log = console.log;
   console.log = line => lines.push(line);

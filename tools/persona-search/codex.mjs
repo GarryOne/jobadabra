@@ -73,7 +73,7 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
 async function main() {
   if (process.argv[2] === '--proof') {
     const answer = await askBroker({model: 'claude-haiku-5-5', max_tokens: 8, messages: [{role: 'user', content: 'Answer ok.'}]});
-    if (!answer.ok) throw new Error(`Codex broker: ${answer.status}: ${answer.detail}`);
+    if (!answer.ok) throw new Error(`AI broker: ${answer.status}: ${answer.detail}`);
     console.log(`Codex subscription broker answered (${answer.model || answer.tier}); no API key used`);
     return 0;
   }

@@ -38,7 +38,7 @@ test('unsupported tools are refused with a 400 and the broker saying no is a 503
   assert.equal(tools.status, 400);
   const no = await answerViaBroker(request(), {env: {}, ask: async () => ({ok: false, status: 'capped', detail: 'broker: budget:week 85%'})});
   assert.equal(no.status, 503);
-  assert.match(JSON.parse(no.body.toString('utf8')).error.message, /Codex broker said no \(broker: budget:week 85%/);
+  assert.match(JSON.parse(no.body.toString('utf8')).error.message, /AI broker said no \(broker: budget:week 85%/);
   const lost = await answerViaBroker(request(), {ask: async () => ({ok: false, status: 'no-token', detail: 'no GitHub OIDC token here'})});
   assert.match(JSON.parse(lost.body.toString('utf8')).error.message, /no GitHub OIDC token/);
 });

@@ -1,4 +1,4 @@
-/* global document, window */
+/* global document */
 // Job: wait on state
 // Settings: every section renders, the CV check on real PDFs. Why (1 Nov 2026): Automatic backup and Your data (export / reset / import) moved to desktop/integration/store/data-roundtrip.test.mjs; the AI engine panel and ⌘K moved to desktop/integration/app/screen-settings.test.js.
 // Was: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
@@ -17,7 +17,7 @@ export const realAi = false;
 export const keepGoing = true;
 
 export async function run(ctx) {
-  const {page, app} = ctx;
+  const {page} = ctx;
   ctx.findings = [];
   await ensureSetUp(ctx);
   await ctx.run('every Settings section renders', async () => {

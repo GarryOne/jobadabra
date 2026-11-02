@@ -38,7 +38,7 @@ test('unsupported tools are refused with a 400 and the broker saying no is a 503
   assert.equal(tools.status, 400);
   const no = await answerViaBroker(request(), {env: {}, ask: async () => ({ok: false, status: 'capped', detail: 'broker: budget:week 85%'})});
   assert.equal(no.status, 503);
-  assert.match(JSON.parse(no.body.toString('utf8')).error.message, /Codex broker said no \(broker: budget:week 85%/);
+  assert.match(JSON.parse(no.body.toString('utf8')).error.message, /AI broker said no \(broker: budget:week 85%/);
   const lost = await answerViaBroker(request(), {ask: async () => ({ok: false, status: 'no-token', detail: 'no GitHub OIDC token here'})});
   assert.match(JSON.parse(lost.body.toString('utf8')).error.message, /no GitHub OIDC token/);
 });
@@ -174,4 +174,11 @@ test('web-search-only calls reach the broker, while mixed tools and broker refus
   const refused = await answerViaBroker(body, {ask: async () => ({ok: false, status: 'unreachable', detail: 'broker unavailable'})});
   assert.equal(refused.status, 503);
   assert.match(JSON.parse(refused.body).error.message, /broker unavailable/);
+});
+
+test('the --proof line says which AI answered, not "Codex" when Claude did (Gitar on #2947)', async () => {
+  const {proofLine} = await import('../../../../tools/persona-search/codex.mjs');
+  assert.equal(proofLine({model: 'claude-haiku-5-5', engine: 'claude', fellBack: [{engine: 'codex', why: 'ran-out'}]}), 'AI broker answered (AI: claude / claude-haiku-5-5 (codex ran-out)); no API key used');
+  assert.equal(proofLine({model: 'gpt-6-luna', tier: 'small'}), 'AI broker answered (AI: gpt-6-luna); no API key used', 'an older broker without an engine still shows its model');
+  assert.equal(proofLine({tier: 'small'}), 'AI broker answered (small); no API key used');
 });

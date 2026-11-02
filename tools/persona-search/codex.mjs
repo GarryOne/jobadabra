@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {aiProvider} from '../../desktop/e2e/lib/ai-provider.mjs';
-import {askBroker, toBrokerCall} from '../../desktop/e2e/lib/broker-client.mjs';
+import {aiLine, askBroker, toBrokerCall} from '../../desktop/e2e/lib/broker-client.mjs';
 import {answerViaBroker} from '../../desktop/e2e/lib/broker-relay.mjs';
 
 /** The answer's output tokens (the model's tier is already on the line as `small`), or null when the call failed: the per-call cost table is measured, not estimated (#2913). */
@@ -70,11 +70,14 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
   } finally { server.closeAllConnections?.(); await new Promise(resolve => server.close(resolve)); }
 }
 
+/** The --proof line: which AI answered (engine / model / what it fell back from), never "Codex" when Claude did (Gitar on #2947). */
+export const proofLine = answer => `AI broker answered (${aiLine(answer) || answer.model || answer.tier}); no API key used`;
+
 async function main() {
   if (process.argv[2] === '--proof') {
     const answer = await askBroker({model: 'claude-haiku-5-5', max_tokens: 8, messages: [{role: 'user', content: 'Answer ok.'}]});
-    if (!answer.ok) throw new Error(`Codex broker: ${answer.status}: ${answer.detail}`);
-    console.log(`Codex subscription broker answered (${answer.model || answer.tier}); no API key used`);
+    if (!answer.ok) throw new Error(`AI broker: ${answer.status}: ${answer.detail}`);
+    console.log(proofLine(answer));
     return 0;
   }
   if (process.argv[2] !== '--' || !process.argv[3]) throw new Error('usage: codex.mjs -- <command> [args] | --proof');

@@ -26,7 +26,7 @@ export function noteSkipped({job, why, env = process.env, dir = cappedDir(env)})
   console.log(env.GITHUB_ACTIONS ? `::warning title=AI skipped (${annotation(job)})::${annotation(why)}` : `AI skipped (${job}): ${why}`);
   try {
     fs.mkdirSync(dir, {recursive: true});
-    fs.writeFileSync(path.join(dir, 'ai-capped.json'), JSON.stringify({why: `${job}: ${why}`, provider: 'Codex broker', job, at: new Date().toISOString()}));
+    fs.writeFileSync(path.join(dir, 'ai-capped.json'), JSON.stringify({why: `${job}: ${why}`, provider: 'AI broker', job, at: new Date().toISOString()}));
     if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, 'skipped=true\n');
   } catch { /* a note never breaks the run */ }
   return why;
@@ -38,7 +38,7 @@ export function noteSkipped({job, why, env = process.env, dir = cappedDir(env)})
  */
 export async function askOrSkip(body, {job, dir, env = process.env, ask = askBroker} = {}) {
   const answer = await ask(body, {env});
-  if (answer.ok) return {ok: true, text: answer.message.content[0].text, model: answer.model, tier: answer.tier, ms: answer.ms, usage: answer.message.usage};
+  if (answer.ok) return {ok: true, text: answer.message.content[0].text, model: answer.model, tier: answer.tier, ...(answer.engine ? {engine: answer.engine} : {}), ...(answer.fellBack ? {fellBack: answer.fellBack} : {}), ms: answer.ms, usage: answer.message.usage};
   if (SKIPPED.includes(answer.status)) return {ok: false, why: noteSkipped({job, why: answer.detail || answer.status, ...(dir ? {dir} : {}), env})};
-  throw new Error(`the Codex broker failed (${answer.status}): ${answer.detail}`);
+  throw new Error(`the AI broker failed (${answer.status}): ${answer.detail}`);
 }

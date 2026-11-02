@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {aiProvider, providerLine} from '../../lib/ai-provider.mjs';
-import {askBroker, tierOf, toBrokerCall} from '../../lib/broker-client.mjs';
+import {AUDIENCE, BROKER_URL, aiLine, askBroker, resetTold, tierOf, toBrokerCall} from '../../lib/broker-client.mjs';
 
 test('the switch: input beats a job override beats the repo variable beats the default; nothing silently changes provider', () => {
   const ci = {CI: 'true'};
@@ -79,7 +79,7 @@ test('the judges on codex: an answer returns in Messages shape; a broker refusal
     const refused = await modelFetch('https://api.anthropic.com/v1/messages', {...request, body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'another?'}]})}, {engine: () => 'api', env: ciEnv});
     assert.equal(refused.status, 503);
     const capped = takeCapped();
-    assert.match(capMessage(capped.neurons, ciEnv, capped.why), /Codex broker said no \(broker: budget:week 85%/);
+    assert.match(capMessage(capped.neurons, ciEnv, capped.why), /AI broker said no \(broker: budget:week 85%/);
   } finally { globalThis.fetch = realFetch; }
 });
 
@@ -92,4 +92,37 @@ test('web search reaches the broker as search true and ordinary calls omit the f
   await askBroker(body, {env, fetchImpl});
   assert.equal(seen[0].search, true);
   assert.equal(Object.hasOwn(seen[1], 'search'), false);
+});
+
+// ai-broker 6/7 (owner, 1 Nov 2026: Claude, Codex or Free AI by one flag; CI should know which one answers).
+test('the client talks to the AI broker: its audience and address, the new address variable first, the old one still honoured', () => {
+  assert.equal(AUDIENCE, 'jobadabra-ai-broker');
+  assert.equal(BROKER_URL({}), 'https://jobadabra-ai-broker.jobpilotto.workers.dev');
+  assert.equal(BROKER_URL({CODEX_BROKER_URL: 'https://old.example'}), 'https://old.example');
+  assert.equal(BROKER_URL({CODEX_BROKER_URL: 'https://old.example', AI_BROKER_URL: 'https://new.example'}), 'https://new.example');
+});
+
+test('the run token is asked for the AI broker audience', async () => {
+  let asked = '';
+  await askBroker({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: async (url, init) => {
+    if (String(url).startsWith('https://gh.example')) { asked = String(url); return new Response(JSON.stringify({value: 'jwt-for-run'})); }
+    return new Response(JSON.stringify({reply: 'x', tokens: {input: 1, output: 1}}));
+  }});
+  assert.match(asked, /[?&]audience=jobadabra-ai-broker(&|$)/);
+});
+
+test('an answer says which engine wrote it and what it fell back from; aiLine is one line, printed once per distinct answer, never per call', async () => {
+  resetTold();
+  const lines = [], log = console.log;
+  console.log = line => lines.push(String(line));
+  try {
+    const reply = extra => fake(() => new Response(JSON.stringify({reply: 'x', tokens: {input: 1, output: 1}, model: 'claude-haiku-5-5', tier: 'small', ...extra})));
+    const first = await askBroker({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: reply({engine: 'claude', fellBack: [{engine: 'codex', why: 'ran-out'}]})});
+    for (let i = 0; i < 3; i++) await askBroker({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: reply({engine: 'claude', fellBack: [{engine: 'codex', why: 'ran-out'}]})});
+    await askBroker({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: reply({engine: 'codex', model: 'gpt-6-luna'})});
+    assert.deepEqual([first.engine, first.fellBack], ['claude', [{engine: 'codex', why: 'ran-out'}]]);
+    assert.deepEqual(lines.filter(line => line.startsWith('AI: ')), ['AI: claude / claude-haiku-5-5 (codex ran-out)', 'AI: codex / gpt-6-luna']);
+  } finally { console.log = log; }
+  assert.equal(aiLine({}), '', 'an older broker that sends no engine prints nothing');
+  assert.equal(aiLine({model: 'gpt-6-luna'}), 'AI: gpt-6-luna');
 });

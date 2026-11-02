@@ -13,9 +13,9 @@ export function nameAiFailure(message, {misses = [], capped = null, log = '', su
   if (!capLine && !capped) return message;
   // Why (#2686 review, 31 Oct 2026): a miss file records no step, so the step printed is the step that FAILED, never claimed as the one that asked.
   const where = suite ? `, suite ${suite}` : '', failed = step ? `; failed step "${oneLine(step)}"` : '';
-  // Both recorded broker forms contain nested parentheses in the reason: stop at the outer delimiter, not the first ')'.
-  const reason = /the Codex broker said no \((.*?)\);/.exec(capLine || '')?.[1]
-    || /\(Codex broker: (.*)\)\s*$/.exec(capLine || '')?.[1]
+  // Both recorded broker forms contain nested parentheses in the reason: stop at the outer delimiter, not the first ')'. Why (2 Nov 2026, ai-broker 6/7): the harness says "AI broker" now, older run logs say "Codex broker": both are read.
+  const reason = /the (?:Codex|AI) broker said no \((.*?)\);/.exec(capLine || '')?.[1]
+    || /\((?:Codex|AI) broker: (.*)\)\s*$/.exec(capLine || '')?.[1]
     || capped?.why || capLine?.split('ai-capped:')[1]?.trim() || 'no refusal reason recorded';
   const refused = `the AI was refused: ${oneLine(reason)}; the step then failed: ${message}`;
   return misses.length ? `${PREFIX}${misses.length} (first: ${misses[0]}${where})${failed}; ${refused}` : `${refused[0].toUpperCase()}${refused.slice(1)}`;

@@ -79,6 +79,16 @@ test('a cap log alone names the refusal without inventing an ask key', t => {
   assert.equal(Object.hasOwn(record, 'environment'), false);
 });
 
+// Why (2 Nov 2026, ai-broker 6/7): the harness now prints "AI broker" where it printed "Codex broker"; logs of older runs keep the old name, so the reader takes both and the reason comes out the same.
+test('both names of the broker in a cap line give the same reason: the old log form and the new', t => {
+  for (const line of [`ai-capped: jobs (Codex broker: ${reason})`, `ai-capped: jobs (AI broker: ${reason})`, `ai-capped: the Codex broker said no (${reason}); it answers from saved replies`, `ai-capped: the AI broker said no (${reason}); it answers from saved replies`]) {
+    const dir = fixture(t, {withMiss: false, log: `${line}\n`});
+    writeSuiteFailures(dir, 'jobs', [{name: 'read jobs', status: 'failed', note: 'wrong value'}], {});
+    const [record] = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
+    assert.equal(record.message, `The AI was refused: ${reason}; the step then failed: wrong value`, line);
+  }
+});
+
 // Why (31 Oct 2026, a8 via mac-07; beta 41135642422): one case per order. Missing stored answer first (it is our gap: key, suite, step), the refusal second; a refusal alone never claims a missing answer.
 test('order 1, missing answer and refusal: the answer key and suite lead, then the failed step, the refusal follows, the symptom ends', t => {
   const dir = fixture(t, {log: `ai-capped: jobs (Codex broker: ${reason})\n`});

@@ -21,6 +21,7 @@ jobs:
         with:
           repository: jobadabra/jobadabra
           ref: main
+          path: engine   # not the caller's own tree: the script runs from engine/ (tests/test_sparse_checkout_has_its_files.py reads another repository's checkout by its path)
           # Why (2 Nov 2026, web#307): every file the script loads is listed (pr-body-check.py loads pr-screens.py), and no comment inside this block (a YAML block scalar has none: it would be part of the pattern).
           sparse-checkout: |
             tools/pr-body-check.py
@@ -30,4 +31,4 @@ jobs:
         env:
           BODY: ${{ github.event.pull_request.body }}
           PR_TITLE: ${{ endsWith(github.actor, '[bot]') && '' || github.event.pull_request.title }}   # the "[xx] " session tag (a bot's PR has none)
-        run: printf '%s' "$BODY" | python3 tools/pr-body-check.py
+        run: printf '%s' "$BODY" | python3 engine/tools/pr-body-check.py

@@ -1,4 +1,4 @@
-name: PR description (reusable)
+name: CI · PR description (reusable)
 # The PR-description check every repo of the org calls (owner, 2 Nov 2026: "they should have the same PR Body, the same GH labels... the same workflow"). One copy: this repo's
 # tools/pr-body-check.py (the check pr-gate.yml runs on jobadabra's own PRs). A repo calls it from its caller file (templates/org-repo/pr-checks.yml):
 #   body:

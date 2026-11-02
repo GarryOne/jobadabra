@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {loadJsdom, openPage} from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const FORM = '<form><label for="city">City</label><input id="city"><div role="group" id="g"><button type="button" aria-pressed="false">Yes</button></div></form>';
 
 test('a try that failed on this state is not made again; another verb may; a control gets CAP tries in all, then it is given up once', {skip}, () => {

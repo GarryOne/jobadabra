@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {loadJsdom, openPage} from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const PAGE = `<form><label for="__input31-inner">Team name *</label><input id="__input31-inner" type="text" required>
   <label for="__input32-inner">Project code *</label><input id="__input32-inner" type="text" required></form>`;
 

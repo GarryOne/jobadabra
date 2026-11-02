@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { loadJsdom, openPage, userClick } from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const DIR = new URL('./fixtures/fill/', import.meta.url);
 const fixtures = fs.readdirSync(DIR).filter((name) => name.endsWith('.json')).sort()
   .map((name) => ({ name: name.slice(0, -5), spec: JSON.parse(fs.readFileSync(new URL(name, DIR), 'utf8')),

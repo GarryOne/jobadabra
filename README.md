@@ -62,7 +62,7 @@ otherwise. Nothing fails because a feature is missing: `python3 -m src doctor` j
 | `telegram` | the digest on your phone | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | free | 5 min |
 | Scheduled runs | a crawl every 4 hours without your laptop | a GitHub fork with Actions on | free | 5 min |
 | `notion` | Applications tracker, Job Matches, run log | `NOTION_TOKEN` + the pages in [docs/notion-schema.md](docs/notion-schema.md) | free | 30 min |
-| Telegram buttons | ✅ applied / ⭐ save / ➕ next, `/run`, `/add` | Cloudflare Worker (`worker/setup.sh`) | free | 15 min |
+| Telegram buttons | ✅ applied / ⭐ save / ➕ next, `/run`, `/add` | a Cloudflare Worker the app deploys into your own account | free | 15 min |
 | `enrich` | AI facts: languages, seniority, salary, visa | `ANTHROPIC_API_KEY`, `JOBADABRA_ENRICH_MODEL` | ~$0.004/job | 2 min |
 | `score` | AI fit score against your Profile | + `JOBADABRA_SCORE_MODEL`, Notion | ~$0.01/job | 2 min |
 | `auto_kits` | cover letter + form answers for top matches | + `JOBADABRA_AUTO_KIT_MAX`, Notion | ~$0.04/kit | 2 min |
@@ -1107,7 +1107,7 @@ Then help me set this up for myself, step by step:
 3. Set the GitHub secrets and variables README.md's Configuration section lists, using the `gh`
    CLI against my fork, from the values I've given you. Never print a secret back to me or commit
    one to a file.
-4. Deploy the Cloudflare Worker (`worker/setup.sh`) once I've logged in via `wrangler`.
+4. Telegram buttons: the desktop app deploys its own Worker into my Cloudflare account (nothing to run here); skip this step.
 5. Ask me for my CV, and these questions (skip any I've already answered): target job titles;
    seniority; locations, ranked in priority order, and whether I'll do remote/relocate; languages I
    speak and their level; work authorisation for each place I'm targeting (and whether I still want

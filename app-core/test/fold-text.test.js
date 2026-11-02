@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { loadJsdom, openPage, userClick } from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const OPTION = 'Zürich, Switzerland';
 const ANSWERS = ['Zurich, Switzerland', '  ZURICH,   switzerland '];   // the accent, then case and spacing

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {loadJsdom, openPage} from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const SECTION = ids => ids.map((id, i) => `<p><label for="${id}">${['Team name', 'Project code'][i]}</label><input id="${id}" type="text"></p>`).join('');
 const PAGE = `<form><div id="sec">${SECTION(['__input1-inner', '__input2-inner'])}</div></form>`;
 

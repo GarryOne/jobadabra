@@ -7,7 +7,7 @@ const read = (path) => fs.readFileSync(new URL(`../../../${path}`, import.meta.u
 export const PAGE_SCRIPTS = PAGE_FILES.map(file => `extension/${file}`);   // as the extension injects them
 
 // jsdom is a dev dependency: CI installs it (npm ci). A worktree whose linked node_modules predates it skips the
-// DOM tests locally with a note instead of failing every other suite; `npm install` in worker/ brings it.
+// DOM tests locally with a note instead of failing every other suite; `npm install` in app-core/ brings it.
 export async function loadJsdom() {
   try { return (await import('jsdom')).JSDOM; } catch (error) {
     if (process.env.CI) throw error;

@@ -7,7 +7,7 @@ import { SNAPSHOT_MAX, snapshotFromReport, snapshotHtml } from '../src/snapshot.
 import { sanitize } from '../src/report.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 
 // The user (made up): every one of these must stay out of a snapshot.

@@ -82,17 +82,40 @@ def clean_names(names):
     return out[:MAX_NAMES]
 
 
-def words_of(search):
-    """The plain place words of a search that may need working out: not a regex, not one of the fixed regions, not shorter than three letters."""
+def _spelling(part):
+    """One spelling of an alternation as a plain word, or None: the page's own reading when it is a word ("z[uü]rich" -> zürich), else the raw text without
+    whole-word marks when it is plain letters ("zürich", "Zurich", "st. gallen")."""
     from .notion.search_settings import readable
+    word = readable(part).strip('"')
+    if not word.startswith('/'):
+        return word
+    raw = re.sub(r'^\\b|\\b$', '', part)
+    return raw if NAME_OK.fullmatch(raw) else None
+
+
+def fragment_place_words(fragment):
+    """The plain place words one location fragment stands for: its own word, or each spelling of an alternation of plain words ("sofia|софия", "zürich|zurich");
+    [] for a real regex. Why (2 Nov 2026, owner: the Search check "still showing 0"; #2974 p1): the strategy draft wrote Sofia's two spellings as one fragment, readable()
+    shows any "|" as a regex and the places were skipped: never asked, no country, no board web search. A plain-word alternation is the places it names, in every language."""
+    from .notion.search_settings import readable
+    word = readable(fragment).strip('"')
+    if not word.startswith('/'):
+        return [word]
+    parts = [_spelling(part) for part in fragment.split('|')]
+    return parts if len(parts) > 1 and None not in parts else []
+
+
+def words_of(search):
+    """The plain place words of a search that may need working out: not a regex (an alternation of plain spellings is each spelling), not one of the fixed regions,
+    not shorter than three letters."""
     from .regions import region_of
     found = []
     for key in ('top_tier', 'country_wide', 'abroad'):
         for fragment in ((search.get('locations') or {}).get(key) or []):
-            word = readable(fragment).strip('"')
-            if word.startswith('/') or len(word) < 3 or region_of(fragment) or word in found:
-                continue
-            found.append(word)
+            for word in fragment_place_words(fragment):
+                if len(word) < 3 or region_of(fragment) or region_of(word) or word in found:
+                    continue
+                found.append(word)
     return found
 
 
@@ -107,16 +130,15 @@ def _country_named(word):
 def countries(search, cache=None, limit=3):
     """The countries the search's places are in, the user's first places first (at most `limit`; None: all, as a region's every country):
     Swiss region words from the fixed table (src/regions.py), every other word from what the model said. [] when none is known yet."""
-    from .notion.search_settings import readable
     from .regions import region_of
     cache = load() if cache is None else cache
     found = []
     for key in ('top_tier', 'country_wide', 'abroad'):
         for fragment in ((search.get('locations') or {}).get(key) or []):
-            word = readable(fragment).strip('"')
-            for country in ['Switzerland'] if region_of(fragment) else (cache.get(_key(word)) or {}).get('countries') or _country_named(word):
-                if country not in found:
-                    found.append(country)
+            for word in ([None] if region_of(fragment) else fragment_place_words(fragment)):
+                for country in ['Switzerland'] if word is None or region_of(word) else (cache.get(_key(word)) or {}).get('countries') or _country_named(word):
+                    if country not in found:
+                        found.append(country)
     return found if limit is None else found[:limit]
 
 
@@ -163,9 +185,11 @@ def expand(fragments, cache=None):
     out = []
     for fragment in fragments or []:
         out.append(fragment)
-        entry = cache.get(_key(fragment))
-        if entry and entry.get('kind') in EXPAND_KINDS + ('city',) and entry.get('names'):
-            out.append(pattern(entry['names']))
+        keys = list(dict.fromkeys([_key(fragment), *(_key(word) for word in fragment_place_words(fragment))]))   # an alternation's spellings are asked one by one (Gitar on #2977)
+        for key in keys:
+            entry = cache.get(key)
+            if entry and entry.get('kind') in EXPAND_KINDS + ('city',) and entry.get('names'):
+                out.append(pattern(entry['names']))
     return out
 
 

@@ -10,6 +10,7 @@ import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 import {askKey, count, countError, countReplay, keepAsk, keepMiss, recallAsk, usageOf} from './ai-meter.mjs';
 import {keepCandidateBody, message, storedAnswer} from './ai-answers.mjs';
+import {streamOf as claudeStreamOf} from './broker-relay.mjs';
 // Why (#2450 slice 3): test/ai-answers.test.mjs and test/applycheck.test.mjs still import this shared wrapper here.
 export {message} from './ai-answers.mjs';
 
@@ -112,6 +113,11 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
           res.end(streamOf(text));
           return;
         }
+        if (!openai && asked.stream) {   // a streamed Claude ask (the app's messages.stream) reads chunks: the same answer as server-sent events, as the replay of a recorded stream is
+          res.writeHead(200, {'content-type': 'text/event-stream'});
+          res.end(claudeStreamOf(text, asked.model || 'e2e-canned', {input_tokens: 1, output_tokens: 1}));
+          return;
+        }
         const body = Buffer.from(JSON.stringify(openai ? responseOf(text) : message(text)));
         res.writeHead(200, {'content-type': 'application/json', 'content-length': body.length});
         res.end(body);
@@ -196,8 +202,8 @@ function sendStored(res, stored, openai, requestBody, stats) {
   const {reply} = stored, stream = JSON.parse(requestBody).stream;
   const text = reply.output_text ?? (reply.content || (reply.output || []).flatMap(item => item.content || [])).map(part => part.text || '').join('');
   const data = openai ? (reply.object === 'response' ? reply : responseOf(text)) : (reply.object === 'response' ? message(text) : reply);
-  const body = openai && stream ? streamOf(text) : JSON.stringify(data);
-  res.writeHead(200, {'content-type': openai && stream ? 'text/event-stream' : 'application/json'});
+  const body = stream ? (openai ? streamOf(text) : claudeStreamOf(text, data.model || 'e2e-canned', {input_tokens: 1, output_tokens: 1})) : JSON.stringify(data);
+  res.writeHead(200, {'content-type': stream ? 'text/event-stream' : 'application/json'});
   res.end(body);
   return true;
 }

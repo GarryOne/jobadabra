@@ -326,7 +326,9 @@ def compare(pr, main_runs):
     quality_ = quality(pr, main_runs)
     red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''
     if red or quality_['red']:
-        parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}"] if quality_['red'] else [])
+        # Why (2 Nov 2026, mac-07): a red from the pooled total has no red row, so the line names the personas below main's newest measured number ("p2 3→0 right").
+        dropped = ', '.join(f"p{r['persona']} {r['main'][0]}→{r['local']} right" for r in rows if r['main'] and type(r['local']) is int and r['local'] < r['main'][0])
+        parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}" + (f' ({dropped})' if dropped else '')] if quality_['red'] else [])
         state, head = 'failure', '🔴 ' + ' · '.join(parts)
     elif green:
         state, head = 'success', f'🟢 measured {green} of {len(PERSONAS)} · every press ≤ 180 s'

@@ -58,6 +58,17 @@ class TheRowsAndTheOverallLineAgree(unittest.TestCase):
         verdict = gate.compare({n: row(n, 150, 3, 5) for n in range(1, 7)}, mains)   # all six measured, none right: total 0 against main's lowest 5
         self.assertEqual((verdict['state'], verdict['quality']['mode'], verdict['quality']['red']), ('failure', 'gated', True))
 
+    def test_a_red_from_the_pooled_total_names_the_personas_that_dropped(self):
+        """mac-07, 2 Nov 2026: no row is red then, so the line itself says where to look."""
+        mains = [{n: row(n, 150, 5, 9, local=(3 if n == 2 else 1) if n in (1, 2) else 0) for n in range(1, 7)} for _ in range(10)]
+        mains[0][2]['local'] = 4   # spread, so the floor is a real number
+        verdict = gate.compare({n: row(n, 150, 3, 5) for n in range(1, 7)}, mains)
+        self.assertEqual(verdict['state'], 'failure')
+        self.assertEqual(marks(verdict).count('🔴'), 0, 'a red line without a red row')
+        self.assertIn('p2 4→0 right', verdict['head'])
+        self.assertIn('p1 1→0 right', verdict['head'])
+        self.assertNotIn('p3', verdict['head'].split('·')[0], 'p3 was 0 on main: it did not drop')
+
     def test_every_mix_of_row_kinds_gives_the_overall_line_the_rows_say(self):
         """One loop over the class: the overall state is a function of the six marks and nothing else (no quality gate: no main runs)."""
         kinds = {'fault': lambda n: row(n, 200, 3, 3, local=1), 'right': lambda n: row(n, 150, 3, 3, local=1), 'none right': lambda n: row(n, 150, 3, 5),

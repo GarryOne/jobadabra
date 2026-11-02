@@ -50,6 +50,13 @@ class ZeroRightJobsIsNeverGreen(unittest.TestCase):
         self.assertIn('claude (claude-haiku-5-5; codex ran-out)', table)
         self.assertNotIn('Codex subscription', table)
 
+    def test_an_ai_line_with_only_an_engine_or_only_a_model_still_names_it(self):
+        """Gitar on #2961: aiLine prints `AI: gpt-6-luna` when an answer names only one of the two."""
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / 'run.log'
+            log.write_text('AI: gpt-6-luna\nAI: claude / claude-haiku-5-5\nAI: free-ai / llama (codex ran-out; claude ran-out)\n')
+            self.assertEqual(gate.engines_of(log), 'gpt-6-luna + claude (claude-haiku-5-5) + free-ai (llama; codex ran-out; claude ran-out)')
+
     def test_without_an_engine_line_the_header_says_it_was_not_reported(self):
         table = gate.table(gate.compare(six({4: {'local': 1, 'found': 3}}), []))
         self.assertIn('AI engine not reported', table)
@@ -60,7 +67,7 @@ class ZeroRightJobsIsNeverGreen(unittest.TestCase):
         runs = six({2: {'funnel_note': gate.funnel_note(funnel)}, 1: {'funnel_note': gate.funnel_note(skipped)}})
         table = gate.table(gate.compare(runs, []))
         self.assertIn('p2', table)
-        self.assertIn('employers named at 43 s; time ran out for: job boards, employer sites', table)
+        self.assertIn('places worked out at 10 s; web search started at 10 s; employers named at 43 s; time ran out for: job boards, employer sites', table)
         self.assertIn('web search never started (no places or roles known)', table)
 
 

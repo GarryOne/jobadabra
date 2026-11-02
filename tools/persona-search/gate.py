@@ -32,7 +32,7 @@ QUALITY_FLOOR_MIN = 1
 PERSONA_CAP_USD = 0.10   # Why (30 Oct 2026, owner; supersedes 27 Oct): Codex runs report $0 API charge; this cap only guards legacy API-key measurements (#2259: $0.045-0.079).
 # Why (2 Nov 2026, owner: "still, everything is 0"; run 41376694937): the header said "Codex subscription" while Claude answered, because Codex's week was used up.
 # The engines come from the "AI: <engine> / <model> (<fell back from>)" line the CI client prints once per distinct answer (desktop/e2e/lib/broker-client.mjs aiLine).
-ENGINE_LINE = re.compile(r'^AI: (\S+) / (\S+)(?: \(([^)]*)\))?\s*$', re.M)
+ENGINE_LINE = re.compile(r'^AI: (\S+)(?: / (\S+))?(?: \(([^)]*)\))?\s*$', re.M)   # aiLine prints engine and model, or only one of them
 
 
 def label(n):
@@ -111,7 +111,8 @@ def engines_of(log):
         return ''
     found = []
     for engine, model, fell in ENGINE_LINE.findall(text):
-        label = f"{engine} ({model}{'; ' + fell if fell else ''})"
+        inner = '; '.join(x for x in (model, fell) if x)
+        label = f"{engine} ({inner})" if inner else engine
         if label not in found:
             found.append(label)
     return ' + '.join(found)
@@ -126,6 +127,10 @@ def funnel_note(funnel):
     """One line on where a press's time went, from its funnel: "employers named at 43 s; time ran out for: job boards, employer sites", or the web search
     that never started; '' when there is nothing to say. Why (2 Nov 2026, run 41376694937): p2-p4 found 0 because the time ran out, p1/p5 because the web search never started."""
     parts = []
+    if funnel.get('places_worked_out_s') is not None:
+        parts.append(f"places worked out at {funnel['places_worked_out_s']} s")
+    if funnel.get('web_search_started_s') is not None:
+        parts.append(f"web search started at {funnel['web_search_started_s']} s")
     if funnel.get('web_search_skipped'):
         parts.append('web search never started (no places or roles known)')
     if funnel.get('employers_named_s') is not None:

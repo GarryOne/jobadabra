@@ -158,6 +158,8 @@ def keep_issue(drift, dry, notes=None):
         api('POST', f'repos/{ISSUE_REPO}/issues', {'title': ISSUE_TITLE, 'body': body})
     else:
         for issue in open_issues:
+            if unseen:   # Why (2 Nov 2026, Gitar on #2950): closing on a clean run must not read as "everything was checked"; the closing comment names what the token could not read
+                api('POST', f'repos/{ISSUE_REPO}/issues/{issue["number"]}/comments', {'body': f'No drift in what this token can read. **Not verified with this token** (not drift):\n{unseen}'})
             api('PATCH', f'repos/{ISSUE_REPO}/issues/{issue["number"]}', {'state': 'closed', 'state_reason': 'completed'})
 
 

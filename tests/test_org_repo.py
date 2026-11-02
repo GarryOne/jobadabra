@@ -149,7 +149,7 @@ class Check(unittest.TestCase):
         self.assertEqual(fake.writes[0][:2], ('PATCH', f'repos/{org_repo.ISSUE_REPO}/issues/500'), 'updated in place, no duplicate opened')
 
     def test_a_clean_result_never_claims_what_the_token_could_not_read(self):
-        """Gitar on #2950: with the org's read token the merge settings are never compared; a clean report must say so, in the line and in the issue."""
+        """Gitar on #2950: with the org's read token the merge settings are never compared; a clean report must say so, in the line and, when it opens or updates the issue, in its body."""
         unreadable = {'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None}
         fake = Fake(settings=unreadable)
         code, out = run(fake, 'check', 'jobadabra-lab', '--issue')
@@ -159,6 +159,19 @@ class Check(unittest.TestCase):
         fake = Fake(ruleset='none', settings=unreadable)
         run(fake, 'check', 'jobadabra-lab', '--issue')
         self.assertIn('Not verified with this token', fake.writes[0][2]['body'])
+
+    def test_closing_the_report_on_a_clean_run_names_what_the_token_could_not_read(self):
+        """Gitar on #2950: a clean run closes the issue; the closing comment must carry the unread settings so "closed" never reads as "all checked"."""
+        unreadable = {'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None}
+        fake = Fake(settings=unreadable)
+        fake.issues = [{'number': 500, 'title': org_repo.ISSUE_TITLE}]
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual([w[:2] for w in fake.writes], [('POST', f'repos/{org_repo.ISSUE_REPO}/issues/500/comments'), ('PATCH', f'repos/{org_repo.ISSUE_REPO}/issues/500')], 'comment first, then close')
+        self.assertIn('Not verified with this token', fake.writes[0][2]['body'])
+        fake = Fake()
+        fake.issues = [{'number': 500, 'title': org_repo.ISSUE_TITLE}]
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual([w[0] for w in fake.writes], ['PATCH'], 'a fully verified clean run closes with no comment')
 
 
 class Ruleset(unittest.TestCase):

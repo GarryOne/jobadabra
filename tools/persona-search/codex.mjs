@@ -6,12 +6,17 @@ import {aiProvider} from '../../desktop/e2e/lib/ai-provider.mjs';
 import {askBroker, toBrokerCall} from '../../desktop/e2e/lib/broker-client.mjs';
 import {answerViaBroker} from '../../desktop/e2e/lib/broker-relay.mjs';
 
+/** The answer's output tokens (the model's tier is already on the line as `small`), or null when the call failed: the per-call cost table is measured, not estimated (#2913). */
+function outputTokens(counted) {
+  try { return JSON.parse(counted)?.usage?.output_tokens ?? null; } catch { return null; }
+}
+
 /** Measure each relay call without changing its answer. `waited` is the client residual, not a measurement of queue time alone; no prompt text is logged. */
 export function timedRelay({env = process.env, ask = askBroker, now = Date.now, log = line => console.error(line)} = {}) {
   let inFlight = 0;
   return async (body, kind = 'unlabelled') => {
     const started = now(), call = toBrokerCall(body);
-    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error';
+    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error', outTokens = null;
     inFlight++;
     try {
       const answer = await answerViaBroker(body, {env, ask: async (wire, options) => {
@@ -22,11 +27,12 @@ export function timedRelay({env = process.env, ask = askBroker, now = Date.now, 
         return result;
       }});
       status = answer.status;
+      outTokens = outputTokens(answer.counted);
       return answer;
     } finally {
       const total = now() - started;
       const label = String(kind).replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 64);
-      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0}`);
+      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0} out-tokens ${outTokens ?? 'na'}`);
       inFlight--;
     }
   };

@@ -147,7 +147,7 @@ test('persona timing logs total, broker execution, residual and concurrent calls
   clock = 1150;
   finish[1]();
   await second;
-  assert.match(lines[0], /^relay: small total 120 broker 70 waited 50 in-flight 2 prompt-chars 20 kind places start 1000 status 200 sent yes tools 0$/);
+  assert.match(lines[0], /^relay: small total 120 broker 70 waited 50 in-flight 2 prompt-chars 20 kind places start 1000 status 200 sent yes tools 0 out-tokens 1$/);
   assert.match(lines[1], /total 150 broker 70 waited 80 in-flight 1/);
   assert.ok(lines.every(line => !line.includes('private-prompt')));
 });
@@ -157,7 +157,7 @@ test('persona timing records rejected unsupported tools and missing broker measu
   const lines = [];
   const relay = timedRelay({now: () => 10, log: line => lines.push(line), ask: async () => { throw new Error('must not send a tool request'); }});
   assert.equal((await relay(request({tools: [{type: 'function', name: 'unsupported'}]}), 'scout')).status, 400);
-  assert.match(lines[0], /broker na waited na .*status 400 sent no tools 1$/);
+  assert.match(lines[0], /broker na waited na .*status 400 sent no tools 1 out-tokens na$/);
 });
 
 

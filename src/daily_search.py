@@ -50,6 +50,7 @@ def search(args, stores=None):
         # as seen and reorder the list between pages.
         if args.mode != 'more':
             feed_list = plan_sources(args, stores, db, sources, run)
+            start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
             report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
             imported = import_sources(db, report, so_far, run)
             contribute_sources(args, stores, db, feed_list, report, stages)
@@ -87,16 +88,20 @@ def check_budget(args, stores, run):
 
 # Start the existing early board and free-API reads in order.
 def start_sources(args, read_profile):
-    if args.mode != 'more' and args.first_jobs and args.score_max and not args.only_visits and read_profile:
-        try:   # Why (27 Oct 2026, benchmark): asked in the slice, its boards started at 41-63 s of a 67 s read cut (first_jobs.propose_early)
-            first_jobs.propose_early()
-        except Exception as error:  # noqa: BLE001 — the slice asks the proposal itself
-            print(f'Warning: early board proposal skipped: {type(error).__name__}: {error}', flush=True)
-    if args.mode in ('scheduled', 'run') and not args.only_visits:   # the board web search at second 0, beside the proposal (src/sources/board_web.py early)
+    if args.mode in ('scheduled', 'run') and not args.only_visits:   # the board web search at second 0 (src/sources/board_web.py early)
         from .sources import board_web   # Why (#first-press-slots, owner, 27 Oct 2026: "Web search ... in parallel"): it started at ~25 s, after the employers' pick
         board_web.early(load_search_config())
         from .sources import eures   # Why (27 Oct 2026, benchmark 40504636029): the free-API stage starts at 72-107 s and queued EURES in every persona; read from second 0, it only takes the result
         eures.start_early(load_search_config())
+
+
+# Ask the first press's board proposal once the pool has named the employers (see first_jobs.propose_early for the why).
+def start_proposal(args, read_profile):
+    if args.mode != 'more' and args.first_jobs and args.score_max and not args.only_visits and read_profile:
+        try:   # Why (#sp-employers-first, 2 Nov 2026, #2913): at second 0 its 73 s of serial calls held the shared AI while the employer pick's calls waited 15-25 s each (zero run 41346903877: employers named at 122 s, 0 of 15 read)
+            first_jobs.propose_early()
+        except Exception as error:  # noqa: BLE001 — the slice asks the proposal itself
+            print(f'Warning: early board proposal skipped: {type(error).__name__}: {error}', flush=True)
 
 
 # Read the hidden, saved and dismissed URLs from the active store.

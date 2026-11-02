@@ -7,7 +7,8 @@ cached AI call, the same the full read makes; owner, 18 Oct 2026: a driver's job
 read at once and while the employer sites are (18 Oct 2026: Chisinau's first 2 boards gave nothing; SRE's 70+ waited for 2 boards), each
 one that refuses automated reading replaced by the next proposed board (19 Oct 2026: 4 of music's first boards refused, XING was 7th).
 The search after it is unchanged; scored jobs are skipped by their hash, so the total AI calls are the same.
-Tests: tests/test_first_jobs.py, tests/test_proven_boards.py."""
+The employer sites' jobs are imported and scored without waiting for the boards; a boards step still running joins when it finishes (#2913).
+Tests: tests/test_first_jobs.py, tests/test_first_jobs_slow_boards.py, tests/test_proven_boards.py."""
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -70,13 +71,17 @@ def board_jobs(say=print, search=None):
     return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare)
 
 
-_early = {}   # the slice's board proposal asked at the search's start (propose_early): {'search': ..., 'future': ...}
+_early = {}   # the slice's board proposal asked once the employers are named (propose_early): {'search': ..., 'future': ...}
 
 
 def propose_early(search=None):
-    """Ask the slice's board proposal (board_ideas.ideas: its AI answers are cached per search) now, in the background, while the search
-    picks its employers -> its future, or None when the slice needs none (proven boards, the end-to-end fixture mode). The slice waits for
+    """Ask the slice's board proposal (board_ideas.ideas: its AI answers are cached per search) now, in the background, once the search has
+    named its employers (src/daily_search.py start_proposal), beside the reading -> its future, or None when the slice needs none (proven boards, the end-to-end fixture mode). The slice waits for
     it (_wait_early) and builds its list then, from the cached answers and the boards the pool serves at that time.
+    Why (#2913, 2 Nov 2026): no longer asked at second 0. Its serial calls (field, then slice: 73 s on the Codex relay) held the shared AI while
+    the employer pick's calls waited 15-25 s each, so the employers were named at 122 s and 0 of 15 were read (zero run 41346903877; the same step
+    took 4 s before the relay). FIRST priority (src/ai/slots.py) does not cure it: it orders who takes a free slot, a running 30-43 s call keeps
+    its slot, and the relay has no slots. The #2218 reason below still holds for asking inside the slice, so it is asked just before it.
     Why (#2218, 27 Oct 2026, benchmark run 40446066828): asked inside the slice, its 2 AI calls waited for Claude's 2 slots behind the
     employer titles and the web search, so the boards started at 41-63 s and the read cut (67 s) left them 5-26 s: 0 board jobs.
     Why (#2218, its rerun 40449103205): only the AI's answers are taken early, never the list: at 10 s the pool's index is not downloaded
@@ -154,18 +159,48 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
         reading = pool.submit(slots.carry(read_boards))   # the boards' pages meanwhile; matched below, in the thread that owns the job cache
         with batch_scope.reader('employer sites'):
             report = scan(chosen, feed_db)
-        try:
-            found = reading.result()
-            report['jobs'] = [*(report.get('jobs') or []), *(aggregators_kept(feed_db, 'Job boards found', found) if found else [])]
-        except Exception as error:  # noqa: BLE001 — the full search reads every board
-            say(f'Warning: first job boards not read: {type(error).__name__}: {error}')
-    (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))(report)   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
-    say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
-    from . import time_budget
-    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile))][:MAX_FIRST]
-    if not order:
-        say(f'First jobs: {len(report.get("jobs") or [])} found, none to score yet')
+        # Why (#2913, 2 Nov 2026): the employer sites' jobs are imported and scored while the boards are still being proposed or read; the boards
+        # join when they finish (a slow proposal on a shared AI took 73 s, and the first job waited for it). Boards already done join the first import.
+        late = None if reading.done() else reading
+        if late is None:
+            report['jobs'] = [*(report.get('jobs') or []), *_board_jobs(reading, feed_db, say)]
+        (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))(report)   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
+        say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
+        found = len(report.get('jobs') or [])
+        done, strong, queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST)
+        if late is not None:
+            joined = _board_jobs(late, feed_db, say)
+            if joined:
+                found += len(joined)
+                (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))({'jobs': joined})
+                say(f'First jobs: {len(joined)} found on the job boards')   # Why (#2928, Gitar): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js); another wording left these jobs hidden
+                if not strong and done < MAX_FIRST:   # Gitar #2928: with little from the employer sites the boards' jobs are the slice's first scores
+                    more, strong, more_queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST - done)
+                    done, queued = done + more, queued + more_queued
+    if not queued:
+        say(f'First jobs: {found} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the boards joined
         return 0
+    said = f', one fits {FIT}+' if strong else ''
+    say(f'First jobs: {done} scored in {round(time.monotonic() - started)} s{said}; the full search goes on')
+    return done
+
+
+def _board_jobs(reading, feed_db, say):
+    """The jobs (report shape) of the boards read, [] when that read failed (the full search reads every board)."""
+    try:
+        found = reading.result()
+        return aggregators_kept(feed_db, 'Job boards found', found) if found else []
+    except Exception as error:  # noqa: BLE001 — the full search reads every board
+        say(f'Warning: first job boards not read: {type(error).__name__}: {error}')
+        return []
+
+
+def _score_first(db, hidden, profile, scorer, model, first, fits, sync, limit):
+    """Score the best-ranked jobs `first` at a time, a sync after each, until one fits FIT+ or `limit` are scored -> (how many were scored, whether one fits, how many were queued)."""
+    from . import time_budget
+    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile))][:limit]
+    if not order:
+        return 0, False, 0
     done, tried, strong = 0, 0, False
     while tried < len(order) and not strong:
         ids = set(order[tried:tried + first])
@@ -176,6 +211,4 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
             break
         done += stats['done']
         strong = any(fit >= FIT for job_id, fit in fits(db).items() if job_id in {str(i) for i in ids})
-    said = f', one fits {FIT}+' if strong else ''
-    say(f'First jobs: {done} scored in {round(time.monotonic() - started)} s{said}; the full search goes on')
-    return done
+    return done, strong, len(order)

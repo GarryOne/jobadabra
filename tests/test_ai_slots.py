@@ -84,11 +84,12 @@ class TheFirstPressMarksItsCalls(unittest.TestCase):
     def test_the_web_search_waits_behind_every_other_call(self):
         self.assertIn("slots.carry(search, slots.LATER)", self.source("sources/board_web.py"))
 
-    def test_the_web_search_starts_with_the_proposal_before_the_employers_are_picked(self):
+    def test_the_web_search_starts_before_the_employers_are_picked_and_the_proposal_after(self):
         body = self.source('daily_search.py')
-        body = body[body.index('def search('):]
-        early, proposal, employers = body.index('board_web.early('), body.index('first_jobs.propose_early('), body.index('scout.active_sources(')
-        self.assertLess(max(early, proposal), employers)
+        searching = body[body.index('def search('):]
+        self.assertLess(searching.index('start_sources('), searching.index('plan_sources('))
+        self.assertLess(searching.index('plan_sources('), searching.index('start_proposal('), '#2913: the proposal waits for the employers')
+        self.assertLess(body.index('board_web.early('), body.index('def start_proposal('), 'the web search stays in start_sources, at second 0')
         self.assertEqual(len(re.findall(r'board_web\.early\(', body)), 1, 'started once')
 
 

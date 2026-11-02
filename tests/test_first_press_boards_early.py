@@ -98,12 +98,12 @@ class TheProposalIsAskedAtTheSearchsStart(unittest.TestCase):
             self.assertIsNone(first_jobs.propose_early(SEARCH))
         self.assertEqual(self.asks, [])
 
-    def test_the_search_starts_it_before_picking_its_employers(self):
+    def test_the_search_starts_it_once_the_employers_are_named_not_inside_the_slice(self):
         body = (Path(__file__).resolve().parents[1] / 'src' / 'daily_search.py').read_text()
         body = body[body.index('def search('):]
-        self.assertIn('first_jobs.propose_early(', body)
-        self.assertLess(body.index('first_jobs.propose_early('), body.index('scout.active_sources('),
-                        'asked while the employers are picked (one AI slot is free then), not inside the slice')
+        self.assertIn('start_proposal(', body)
+        self.assertLess(body.index('plan_sources('), body.index('start_proposal('), '#2913: after the employers, so the pick never queues behind it')
+        self.assertLess(body.index('start_proposal('), body.index('gather_sources('), 'asked before the slice reads, not inside it')
 
 
 class TheScoutsListsEndWithItsNamesTime(unittest.TestCase):

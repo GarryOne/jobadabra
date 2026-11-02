@@ -52,6 +52,7 @@ const RULES = [
     text: `🏷️ ${m[1]} checked ${plural(state.sum('titles', m[2]), 'job title')}: ${state.sum('titles-fit', m[3])} could fit you`})],
   [/^First jobs: reading (\d+) of (\d+)/, m => `⚡ Reading ${m[1]} of ${plural(m[2], 'employer site')} first`],
   [/^First jobs: (\d+) found$/, m => `⚡ ${plural(m[1], 'job')} found in the first sites`],
+  [/^First jobs: (\d+) found on the job boards$/, m => `⚡ ${plural(m[1], 'job')} found on the job boards`],
   [/^First jobs: (\d+) found, none to score/, () => null],
   [/^First jobs: (\d+) scored in (\d+) s/, m => `🎉 ${plural(m[1], 'first job')} scored in ${m[2]} s; the full search goes on`],
   [/^Jobs so far: (\d+) new from (.+)$/, m => `➕ ${plural(m[1], 'new job')} from ${m[2]}, in your list now`],

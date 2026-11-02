@@ -55,8 +55,10 @@ FAMILIES = {
 def places(texts):
     """(countries, metros) named by these place words, as fixed-list ids. Switzerland, the first market, also from its fixed table
     (src/regions.py), so a Swiss search is Swiss offline and on its first run."""
-    return (countries(texts), meanings.labels('pool-metro', texts, METROS, 'A place a job seeker searches in. Answer its metro area, or none when it is a '
-                                              'whole country, a region, or a place outside these areas.'))
+    from .together import together   # Why (#2913, 2 Nov 2026): the country and the metro are independent AI lookups
+    found, metros = together(lambda: countries(texts), lambda: meanings.labels('pool-metro', texts, METROS, 'A place a job seeker searches in. Answer its metro area, or none when it is a '
+                                                                                'whole country, a region, or a place outside these areas.'))
+    return found, metros
 
 
 def countries(texts):

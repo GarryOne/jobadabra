@@ -156,21 +156,28 @@ def fine_tags(search=None):
     search = search or load_search_config(matching=False)
     places = search.get('locations', {})
     own = lambda groups: [_plain(p) for group in groups for p in places.get(group, [])]  # noqa: E731
-    countries, _ = pool_tags.places(own(('top_tier', 'country_wide', 'abroad')))
+    from .together import together   # Why (#2913, 2 Nov 2026): independent AI lookups, one after another they held the employer pick for tens of seconds
+    # The metros of the first places are asked AFTER the others: they are a subset of the all-places ask, so they are cache reads and the AI is asked
+    # exactly what the serial code asked (an old search tape has no request for them, and a cold cache would ask twice).
+    (countries, _), families = together(lambda: pool_tags.places(own(('top_tier', 'country_wide', 'abroad'))),
+                                        lambda: pool_tags.families([_plain(k) for k in search.get('role_keywords', [])]))
     _, metros = pool_tags.places(own(('top_tier',)))   # metro areas: only the places named first, not a whole country
-    return {'countries': countries, 'metros': metros, 'families': pool_tags.families([_plain(k) for k in search.get('role_keywords', [])])}
+    return {'countries': countries, 'metros': metros, 'families': families}
 
 
 def tags(search=None):
     """(roles, regions) of this user's own search settings, as fixed-list names. No free text ever."""
     search = search or load_search_config(matching=False)   # their own words, not the crawl's added place words
     from .ai import meanings
-    roles = set(meanings.labels('pool-role', [_plain(k) for k in search.get('role_keywords', [])], ROLES, 'A role a job seeker looks for. Answer its tech area.'))
-    # The other trades by the role kinds (src/role_kinds.py), so a shop or warehouse search is not just 'other' (6 Oct 2026). Fixed names.
     from .role_kinds import UNKNOWN, of_search
-    roles |= (of_search(search) or set()) - {'software', 'other', UNKNOWN}
+    from .together import together
     places = [_plain(p) for group in ('top_tier', 'country_wide', 'abroad') for p in search.get('locations', {}).get(group, [])]
-    regions = set(meanings.labels('pool-region', places, REGIONS, 'A place a job seeker searches in. Answer its region.'))
+    # Why (#2913, 2 Nov 2026): the three lookups are independent, so they run side by side
+    roles, kinds, regions = together(
+        lambda: set(meanings.labels('pool-role', [_plain(k) for k in search.get('role_keywords', [])], ROLES, 'A role a job seeker looks for. Answer its tech area.')),
+        lambda: of_search(search),   # The other trades by the role kinds (src/role_kinds.py), so a shop or warehouse search is not just 'other' (6 Oct 2026). Fixed names.
+        lambda: set(meanings.labels('pool-region', places, REGIONS, 'A place a job seeker searches in. Answer its region.')))
+    roles |= (kinds or set()) - {'software', 'other', UNKNOWN}
     return sorted(roles) or ['other'], sorted(regions)
 
 

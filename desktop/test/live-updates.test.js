@@ -12,6 +12,7 @@ import {keepRunLine} from '../lib/pipeline-lines.js';
 // with the words Live updates shows for it.
 const RESULTS = [
   ['First jobs: 9 found', /9 jobs found in the first sites/],
+  ['First jobs: 3 found on the job boards', /3 jobs found on the job boards/],
   ['Job boards: a web search found Aero Board (Pilot jobs), Wing Jobs (Crew)', /^Job boards: a web search found Aero Board/],
   ['Job boards: no web search: searched lately, its boards are kept', /^Job boards: no web search: searched lately/],
   ['Job boards: 2 read in the last 6 h skipped; reading 3 new ones', /^Job boards: 2 read in the last 6 h skipped/],

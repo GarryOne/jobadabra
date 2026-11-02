@@ -52,7 +52,8 @@ class Fake:
                 raise org_repo.NotFound(path)
             return {'content': base64.b64encode(self.files[name].encode()).decode()}
         if path.startswith(f'repos/{org_repo.ISSUE_REPO}/issues'):
-            return self.issues
+            page = int(path.split('&page=')[1]) if '&page=' in path else 1
+            return self.issues[(page - 1) * 100:page * 100]
         raise AssertionError(f'unexpected GET {path}')
 
 
@@ -110,6 +111,16 @@ class Check(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn('note jobadabra-lab: bypass actors are not shown', out)
 
+    def test_settings_a_token_gets_as_null_are_a_note_not_drift_but_a_real_wrong_value_still_is(self):
+        fake = Fake(settings={'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None})
+        code, out = run(fake, 'check', 'jobadabra-lab')
+        self.assertEqual(code, 0)
+        self.assertIn('note jobadabra-lab: settings', out)
+        self.assertIn('allow_squash_merge', out)
+        code, out = run(Fake(settings={'allow_auto_merge': None, 'allow_merge_commit': True}), 'check', 'jobadabra-lab')
+        self.assertEqual(code, 1, 'a null beside a readable wrong value: the wrong value is still drift')
+        self.assertIn('allow_merge_commit', out)
+
     def test_each_repo_gets_its_profile(self):
         self.assertEqual(org_repo.files_for('jobadabra'), [])
         self.assertEqual(org_repo.files_for('jobadabra-web'), ['gitar-label.yml', 'conflict-label.yml'])
@@ -129,6 +140,38 @@ class Check(unittest.TestCase):
         clean.issues = [{'number': 5, 'title': org_repo.ISSUE_TITLE}]
         run(clean, 'check', 'jobadabra-lab', '--issue')
         self.assertEqual(clean.writes[0][2]['state'], 'closed')
+
+
+    def test_the_issue_is_found_past_the_first_hundred_open_issues(self):
+        fake = Fake(ruleset='none')
+        fake.issues = [{'number': n, 'title': f'other {n}'} for n in range(100)] + [{'number': 500, 'title': org_repo.ISSUE_TITLE}]
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual(fake.writes[0][:2], ('PATCH', f'repos/{org_repo.ISSUE_REPO}/issues/500'), 'updated in place, no duplicate opened')
+
+    def test_a_clean_result_never_claims_what_the_token_could_not_read(self):
+        """Gitar on #2950: with the org's read token the merge settings are never compared; a clean report must say so, in the line and, when it opens or updates the issue, in its body."""
+        unreadable = {'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None}
+        fake = Fake(settings=unreadable)
+        code, out = run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual(code, 0)
+        self.assertNotIn('every checked repo is on the shared setup', out)
+        self.assertIn('no drift in what this token can read; not verified with this token in 1 repo(s): jobadabra-lab', out)
+        fake = Fake(ruleset='none', settings=unreadable)
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertIn('Not verified with this token', fake.writes[0][2]['body'])
+
+    def test_closing_the_report_on_a_clean_run_names_what_the_token_could_not_read(self):
+        """Gitar on #2950: a clean run closes the issue; the closing comment must carry the unread settings so "closed" never reads as "all checked"."""
+        unreadable = {'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None}
+        fake = Fake(settings=unreadable)
+        fake.issues = [{'number': 500, 'title': org_repo.ISSUE_TITLE}]
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual([w[:2] for w in fake.writes], [('POST', f'repos/{org_repo.ISSUE_REPO}/issues/500/comments'), ('PATCH', f'repos/{org_repo.ISSUE_REPO}/issues/500')], 'comment first, then close')
+        self.assertIn('Not verified with this token', fake.writes[0][2]['body'])
+        fake = Fake()
+        fake.issues = [{'number': 500, 'title': org_repo.ISSUE_TITLE}]
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual([w[0] for w in fake.writes], ['PATCH'], 'a fully verified clean run closes with no comment')
 
 
 class Ruleset(unittest.TestCase):

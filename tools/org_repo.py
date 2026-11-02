@@ -73,10 +73,10 @@ def ruleset_gaps(want, have):
     """The differences between the template ruleset and a repo's: enforcement, branch, bypass actors (exactly), and each rule's own parameters."""
     gaps = subset_gaps({k: want[k] for k in ('name', 'target', 'enforcement', 'conditions')}, have)
     actors = lambda body: sorted((a['actor_type'], a['actor_id'], a['bypass_mode']) for a in body.get('bypass_actors', []))
-    # Why (2 Nov 2026, Gitar on #2945): GitHub returns bypass_actors only to a requester with write access to the ruleset. A read-only token sees no key at all: that is "cannot verify"
+    # Why (2 Nov 2026, Gitar on #2945): GitHub documents bypass_actors as returned only to a requester with write access. The org's Administration-read token does see it (measured), but a token that does not gets no key at all: that is "cannot verify"
     # (a note, see UNVERIFIED), never an empty list, or every repo would drift for ever. A key that IS returned must match exactly (an extra bypass is drift too).
     if 'bypass_actors' not in have:
-        UNVERIFIED.append('bypass actors are not shown to this token (it needs Administration: write on the repo to read them)')
+        UNVERIFIED.append('bypass actors are not shown to this token (this token cannot read them)')
     elif actors(want) != actors(have):
         gaps.append(f'bypass actors are {actors(have)}, should be {actors(want)}')
     have_rules = {rule['type']: rule for rule in have.get('rules', [])}
@@ -115,7 +115,12 @@ def find_ruleset(repo):
 def check_repo(repo):
     """-> the list of differences between one repo and the templates (empty = on the shared setup)."""
     info = api('GET', f'repos/{ORG}/{repo}')
-    gaps = [f'settings: {gap}' for gap in subset_gaps(template_json('settings.json'), info)]
+    # Why (2 Nov 2026, mac-07 measured the org's Administration-read token): the merge settings come back null to it. null is "cannot read", a note, never drift; a real value must match.
+    wanted = template_json('settings.json')
+    unreadable = sorted(key for key in wanted if info.get(key) is None)
+    if unreadable:
+        UNVERIFIED.append(f'settings {", ".join(unreadable)} are not shown to this token (null)')
+    gaps = [f'settings: {gap}' for gap in subset_gaps({k: v for k, v in wanted.items() if k not in unreadable}, info)]
     ruleset_id = find_ruleset(repo)
     if ruleset_id is None:
         gaps.append(f'no ruleset "{template_json("ruleset.json")["name"]}"')
@@ -135,10 +140,16 @@ def org_repos():
     return [r['name'] for r in api('GET', f'orgs/{ORG}/repos?type=all&per_page=100') if not r.get('archived') and r['name'] not in template_json('profiles.json').get('exclude', [])]
 
 
-def keep_issue(drift, dry):
+def keep_issue(drift, dry, notes=None):
     """One open issue while any repo drifts (updated in place), closed when none does."""
-    open_issues = [i for i in api('GET', f'repos/{ISSUE_REPO}/issues?state=open&per_page=100') if i['title'] == ISSUE_TITLE and 'pull_request' not in i]
-    body = '\n'.join(f'- **{repo}**: {gap}' for repo, gaps in sorted(drift.items()) for gap in gaps) + '\n\nFix: `tools/org-repo.sh onboard <repo> <clone>` (files + settings) and `tools/org-repo.sh ruleset <repo>`; the weekly check closes this issue when nothing drifts.'
+    open_issues = []
+    for page in range(1, 11):   # Why (2 Nov 2026, Gitar on #2949): one page of 100 loses the report issue once 100 newer issues/PRs are open, and a duplicate would open every week
+        listed = api('GET', f'repos/{ISSUE_REPO}/issues?state=open&per_page=100&page={page}')
+        open_issues += [i for i in listed if i['title'] == ISSUE_TITLE and 'pull_request' not in i]
+        if len(listed) < 100:
+            break
+    unseen = '\n'.join(f'- {repo}: {note}' for repo, found in sorted((notes or {}).items()) for note in found)
+    body = '\n'.join(f'- **{repo}**: {gap}' for repo, gaps in sorted(drift.items()) for gap in gaps) + (f'\n\n**Not verified with this token** (not drift):\n{unseen}' if unseen else '') + '\n\nFix: `tools/org-repo.sh onboard <repo> <clone>` (files + settings) and `tools/org-repo.sh ruleset <repo>`; the weekly check closes this issue when nothing drifts.'
     if dry:
         print(f'issue: would {"update/open" if drift else "close"}: {ISSUE_TITLE}')
     elif drift and open_issues:
@@ -147,24 +158,30 @@ def keep_issue(drift, dry):
         api('POST', f'repos/{ISSUE_REPO}/issues', {'title': ISSUE_TITLE, 'body': body})
     else:
         for issue in open_issues:
+            if unseen:   # Why (2 Nov 2026, Gitar on #2950): closing on a clean run must not read as "everything was checked"; the closing comment names what the token could not read
+                api('POST', f'repos/{ISSUE_REPO}/issues/{issue["number"]}/comments', {'body': f'No drift in what this token can read. **Not verified with this token** (not drift):\n{unseen}'})
             api('PATCH', f'repos/{ISSUE_REPO}/issues/{issue["number"]}', {'state': 'closed', 'state_reason': 'completed'})
 
 
 def cmd_check(args):
     """`check`: print every difference between the repos (all, or the named ones) and the templates; with --issue keep the one report issue. -> exit code (1 on drift without --issue)."""
-    drift = {}
+    drift, notes = {}, {}
     for repo in args.repos or org_repos():
         UNVERIFIED.clear()
         gaps = check_repo(repo)
+        if UNVERIFIED:
+            notes[repo] = list(UNVERIFIED)
         for note in UNVERIFIED:
             print(f'note {repo}: {note}')
         for gap in gaps:
             print(f'drift {repo}: {gap}')
         if gaps:
             drift[repo] = gaps
-    print(f'org-repo: {len(drift)} repo(s) drift' if drift else 'org-repo: every checked repo is on the shared setup')
+    # Why (2 Nov 2026, Gitar on #2950): a token that cannot read a setting must never make the report say "every repo is on the shared setup"; the unread part is named in the line and in the issue.
+    unseen = f'; not verified with this token in {len(notes)} repo(s): {", ".join(sorted(notes))}' if notes else ''
+    print(f'org-repo: {len(drift)} repo(s) drift{unseen}' if drift else f'org-repo: no drift in what this token can read{unseen}' if notes else 'org-repo: every checked repo is on the shared setup')
     if args.issue:
-        keep_issue(drift, args.dry_run)
+        keep_issue(drift, args.dry_run, notes)
         return 0   # the issue is the report: a scheduled run is red only when the check itself failed (an API error exits non-zero)
     return 1 if drift else 0
 

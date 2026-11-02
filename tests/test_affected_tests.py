@@ -2,6 +2,7 @@
 safe: imports (direct and through another module), text mentions, tree-scanning tests always, and "run everything" when nothing maps."""
 import importlib.util
 import re
+import shutil
 import unittest
 from pathlib import Path
 
@@ -15,6 +16,27 @@ class AffectedTests(unittest.TestCase):
     def test_docs_alone_select_nothing(self):
         got = affected.select(['docs/x.md', 'README.md'])
         self.assertEqual([got[a] for a in ('python', 'desktop', 'worker', 'site')], [[], [], [], []])
+
+    @unittest.skipUnless(shutil.which('node'), 'the readers come from the harness rule, run by node')
+    def test_a_data_file_the_app_reads_picks_the_tests_of_its_reader(self):
+        # Why (2 Nov 2026, betas 16 and 17; owner chose "e2e + integration"): #2926 changed the profile template, which desktop/lib/strategy.js reads into the wizard's AI ask; no test ran.
+        got = affected.select(['docs/notion-profile-template.md'])
+        self.assertIn('store/wizard-strategy-from-cv.test.mjs', got['integration'])
+        self.assertIn('desktop/lib/strategy.js', got['reasons']['data']['docs/notion-profile-template.md'])
+        self.assertTrue(got['desktop'], 'the unit tests that load strategy.js run too')
+        config = affected.select(['config/search.example.json'])
+        self.assertIn('store/wizard-strategy-from-cv.test.mjs', config['integration'], 'strategy.js:223 reads the example config into the same ask')
+
+    def test_a_failing_data_readers_helper_runs_everything(self):
+        class Failed: returncode, stdout = 1, ''
+        real_run = affected.subprocess.run
+        try:
+            affected.subprocess.run = lambda args, *a, **k: Failed() if 'data-readers' in str(args) else real_run(args, *a, **k)
+            got = affected.select(['docs/notion-profile-template.md'])
+        finally:
+            affected.subprocess.run = real_run
+        self.assertEqual(got['integration'], 'all', 'its readers are unknown: when in doubt, run it')
+        self.assertEqual(got['reasons']['all'], ['tools/data-readers.mjs failed'])
 
     def test_dependency_and_unknown_files_run_everything(self):
         for f in ('package.json', 'requirements.txt', 'tests/test_0_notion_ids.py', 'something/new.bin', '.github/workflows/build.yml'):
@@ -159,7 +181,8 @@ class AffectedTests(unittest.TestCase):
         class Failed: returncode, stdout = 1, 'not json'
         real_run, real_which = affected.subprocess.run, affected.shutil.which
         try:
-            affected.subprocess.run = lambda *a, **k: Failed()
+            # only the reach helper fails: tools/data-readers.mjs (a .json change) has its own case below
+            affected.subprocess.run = lambda args, *a, **k: Failed() if 'e2e-test-reach' in str(args) else real_run(args, *a, **k)
             affected.e2e_reach.cache_clear()
             got = affected.select(['desktop/e2e/lanes.json'])
             self.assertEqual(got['e2e'], 'all')

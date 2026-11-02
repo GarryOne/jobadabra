@@ -172,6 +172,20 @@ def e2e_reach():
         return None
 
 
+def data_readers(changed):
+    """{changed data file: [code files that read it at run time]} from desktop/e2e/lib/data-reads.mjs, through tools/data-readers.mjs; {} without node or the helper;
+    None when the helper fails: the caller then runs everything, as for any change it cannot map.
+    Why (2 Nov 2026, betas 16 and 17; owner chose "e2e + integration"): docs/notion-profile-template.md, read by desktop/lib/strategy.js into the wizard's AI ask, picked no test."""
+    helper, node = ROOT / 'tools/data-readers.mjs', shutil.which('node')
+    if not node or not helper.is_file():
+        return {}
+    out = subprocess.run([node, str(helper), *changed], cwd=ROOT, capture_output=True, text=True, check=False)
+    try:
+        return json.loads(out.stdout) if out.returncode == 0 else None
+    except ValueError:
+        return None
+
+
 def reaches_changed(paths, changed):
     """Does a test's reach hold a changed file, or a folder it reads whole (a trailing '/') that holds one?"""
     folders = [p for p in paths if p.endswith('/')]
@@ -212,6 +226,14 @@ def select(changed, base_ref=None):
     why = result['reasons']
     if not changed:
         return result
+    # A data file the app or the engine reads by path (docs, config, JSON) counts as its readers changed: their tests run (lib/data-reads.mjs).
+    readers = data_readers(changed)
+    if readers is None:
+        why['all'] = ['tools/data-readers.mjs failed']
+        return {**{k: 'all' for k in AREAS}, 'reasons': why}
+    if readers:
+        why['data'] = readers
+        changed = sorted(set(changed) | {reader for found in readers.values() for reader in found})
     relevant = [f for f in changed if not NO_TEST_EFFECT.search(f)]
     if not relevant:
         return result

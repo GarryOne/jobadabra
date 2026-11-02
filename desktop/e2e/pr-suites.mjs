@@ -13,7 +13,7 @@ import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {suitesReading} from './lib/page-reach.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
 import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
-import {isDataFile, readHunks} from './lib/data-reads.mjs';
+import {isDataFile, READER_DIRS, readHunks} from './lib/data-reads.mjs';
 import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -36,12 +36,11 @@ function loadMap() {
 }
 // A changed data file (docs, config, JSON the app reads by path) counts as the lines that read it, in the commit a suite was recorded on: {dataFile: {reader: ranges}}
 // (lib/data-reads.mjs). Why (2 Nov 2026, betas 16 and 17): #2926 changed docs/notion-profile-template.md, which strategy.js:92 reads for the wizard's AI ask, and no step ran.
-const READERS = ['desktop/lib', 'desktop/main.js', 'desktop/renderer', 'app-core', 'src'];
 function dataHunks(sha, dataFiles) {
   const out = {};
   for (const file of dataFiles) {
     let found = '';
-    try { found = git(['-C', '../..', 'grep', '-n', '-F', '-e', path.posix.basename(file), sha, '--', ...READERS]); }
+    try { found = git(['-C', '../..', 'grep', '-n', '-F', '-e', path.posix.basename(file), sha, '--', ...READER_DIRS]); }
     catch (error) { if (error.status !== 1) throw error; }   // git grep exits 1 when no line names the file
     out[file] = readHunks(found, file);
   }

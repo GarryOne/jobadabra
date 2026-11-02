@@ -14,6 +14,8 @@ const COMMENT = /^\s*(\/\/|\/\*|\*|#)/;
 
 /** @returns {boolean} a file whose change is read as data (a code file is followed by its imports and the coverage map instead). */
 export const isDataFile = file => DATA.test(String(file));
+/** Where the code the app and the engine run lives: the folders searched for a changed data file's readers (pr-suites.mjs, tools/data-readers.mjs). */
+export const READER_DIRS = ['desktop/lib', 'desktop/main.js', 'desktop/renderer', 'app-core', 'src'];
 
 /**
  * The repo data files one source line names with string literals: one literal, or several in a row joined by '/' (`path.join(REPO, 'docs', 'x.md')`,

@@ -13,6 +13,7 @@ import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {suitesReading} from './lib/page-reach.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
 import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
+import {isDataFile, readHunks} from './lib/data-reads.mjs';
 import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -33,14 +34,33 @@ function loadMap() {
     return JSON.parse(fs.readFileSync(path.join(dir, 'coverage-map.json'), 'utf8'));
   } catch (error) { console.log(`pr-suites: no coverage map (${error.message.split('\n')[0]}): the other picks only`); return {}; }
 }
+// A changed data file (docs, config, JSON the app reads by path) counts as the lines that read it, in the commit a suite was recorded on: {dataFile: {reader: ranges}}
+// (lib/data-reads.mjs). Why (2 Nov 2026, betas 16 and 17): #2926 changed docs/notion-profile-template.md, which strategy.js:92 reads for the wizard's AI ask, and no step ran.
+const READERS = ['desktop/lib', 'desktop/main.js', 'desktop/renderer', 'app-core', 'src'];
+function dataHunks(sha, dataFiles) {
+  const out = {};
+  for (const file of dataFiles) {
+    let found = '';
+    try { found = git(['-C', '../..', 'grep', '-n', '-F', '-e', path.posix.basename(file), sha, '--', ...READERS]); }
+    catch (error) { if (error.status !== 1) throw error; }   // git grep exits 1 when no line names the file
+    out[file] = readHunks(found, file);
+  }
+  return out;
+}
 // The suites and STEPS whose recorded lines this PR changes: the diff from each suite's recorded commit to the PR's head, for the files the PR changes (a superset when
 // main moved on). byFile retains every file that reached each suite for watched-part selection. -> {map, picked: {suite: {steps, setup, whole, reason}}} (lib/coverage-pick.mjs stepsCovering).
 function covered(changedFiles, watched = {}, reads = {}) {
-  const map = loadMap(), bySha = {};
+  const map = loadMap(), bySha = {}, readsBySha = {}, data = changedFiles.filter(isDataFile);
   if (!changedFiles.length) return {map, picked: {}, byFile: {}};   // `git diff <sha> HEAD --` with no path would diff the whole repo since the map's commit
-  for (const sha of mapShas(map)) { try { bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles])); } catch { /* commit not here: that suite is not picked by lines */ } }
+  for (const sha of mapShas(map)) {
+    try {
+      bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles]));
+      readsBySha[sha] = dataHunks(sha, data);
+      for (const byReader of Object.values(readsBySha[sha])) for (const [reader, ranges] of Object.entries(byReader)) (bySha[sha][reader] ||= []).push(...ranges);
+    } catch { /* commit not here: that suite is not picked by lines */ }
+  }
   const byFile = Object.fromEntries(changedFiles.map(file => {
-    const only = Object.fromEntries(Object.entries(bySha).map(([sha, hunks]) => [sha, {[file]: hunks[file] || []}]));
+    const only = Object.fromEntries(Object.entries(bySha).map(([sha, hunks]) => [sha, readsBySha[sha]?.[file] || {[file]: hunks[file] || []}]));
     return [file, Object.keys(stepsCovering(map, only, {watched, reads}))];
   }));
   return {map, picked: stepsCovering(map, bySha, {watched, reads}), byFile};

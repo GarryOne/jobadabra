@@ -82,8 +82,21 @@ class AnAlternationOfSpellingsIsItsPlaces(unittest.TestCase):
                     fragment = shape.format(a=country.lower(), b=country.lower() + 'x')
                     self.assertEqual(places.countries(search(country=[fragment]), {}, limit=None), [country], 'a country named by its English name needs no AI')
 
+    def test_accented_and_capitalised_spellings_are_words_too(self):
+        """Fresh-subagent review of this PR: the draft's second spelling is often accented or capitalised ("zürich|zurich")."""
+        for fragment, words in (('zürich|zurich', ['zürich', 'zurich']), ('Zürich|Zurich', ['Zürich', 'Zurich']), ('münchen|munich', ['münchen', 'munich']),
+                                ('st. gallen|saint-gall', ['st. gallen', 'saint-gall']), (r'\bwien\b|\bvienna\b', ['wien', 'vienna']), ('z[uü]rich|zurich', ['zürich', 'zurich'])):
+            with self.subTest(fragment=fragment):
+                self.assertEqual(places.words_of(search(top=[fragment])), words)
+        found, _ = known(search(top=['münchen|munich']), lambda word: 'Germany')
+        self.assertEqual(found, ['Germany'])
+
+    def test_a_swiss_region_word_in_an_alternation_uses_the_fixed_table_not_the_AI(self):
+        self.assertEqual(places.countries(search(top=['romandie|suisse romande']), {}, limit=None), ['Switzerland'])
+        self.assertNotIn('romandie', places.words_of(search(top=['romandie|suisse romande'])))
+
     def test_a_real_regex_is_still_not_a_place_word(self):
-        self.assertEqual(places.words_of(search(top=['/regex-like/', 'z(?:ü|ue)rich', 'a|(b)'])), [])
+        self.assertEqual(places.words_of(search(top=['/regex-like/', 'z(?:ü|ue)rich', 'a|(b)', '(sofia|софия)', 'sofia|', '|sofia', 'sofia|софия|(?:x)'])), [])
 
 
 if __name__ == '__main__':

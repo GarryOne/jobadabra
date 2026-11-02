@@ -84,4 +84,4 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 - [x] 6a/6 `ai-cost-billed.yml` to web (proof: tests/test_desktop_extension_only.py)
 - [x] 6b-1/6 the central scout and the product brain in lab, switched off (proof: none: merged as jobadabra-lab#65, 6d5ec76)
 - [x] 6b-3/6 first by-hand scout in lab: AI calls answered, no "oidc" (proof: none: jobadabra-lab run 41376186747, 2 Nov 2026 02:09-02:33 UTC: 40 broker calls answered by claude-haiku-5-5 (codex ran out), 0 failed, 0 oidc lines, 12 SerpApi searches, 3871 feeds published)
-- [ ] 6b-4/6 the switch: public deletes both workflows and the tests that read them, lab turns the schedule on
+- [x] 6b-4/6 the switch: public deletes both workflows and the tests that read them, lab turns the schedule on (proof: none: jobadabra#2962 + jobadabra-lab#74 + jobadabra-web#320 merged 2 Nov 2026 03:11-03:13 UTC; public main has neither workflow; lab's two workflows are active with `schedule:`; Cloudflare read-back: www BRAIN_REPO = jobadabra/jobadabra-lab, 3 triggers unchanged)

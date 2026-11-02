@@ -1,5 +1,6 @@
-"""Every required check in tools/pr-settings.sh is the name of a job some workflow runs, or the status tools/pr-verdict.py writes (12 Oct 2026: "hole 3" was renamed
+"""Every required check in templates/org-repo/ruleset.json (applied by tools/pr-settings.sh) is the name of a job some workflow runs, or the status tools/pr-verdict.py writes (12 Oct 2026: "hole 3" was renamed
 "cases fail before the fix"). A required check that nothing reports leaves every PR waiting for ever, so a rename that misses the list (or a typo) fails here."""
+import json
 import re
 import shlex
 import subprocess
@@ -10,8 +11,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def required():
-    text = (ROOT / 'tools' / 'pr-settings.sh').read_text()
-    return shlex.split(re.search(r"^checks='(.*)'$", text, re.M).group(1))
+    ruleset = json.loads((ROOT / 'templates' / 'org-repo' / 'ruleset.json').read_text())   # the one definition (tools/pr-settings.sh applies it through tools/org-repo.sh)
+    return [c['context'] for rule in ruleset['rules'] if rule['type'] == 'required_status_checks' for c in rule['parameters']['required_status_checks']]
 
 
 def job_names():
@@ -44,7 +45,7 @@ class RequiredChecksTest(unittest.TestCase):
         self.assertGreaterEqual(len(checks), 1, 'positive control: the list is read (one since 15 Oct 2026: the one job that starts on every PR)')
         self.assertTrue(any(name.match('desktop (ubuntu-24.04)') for name in names), 'positive control: a matrix job name is matched')
         self.assertEqual([check for check in checks if not any(name.match(check) for name in names)], [],
-                         'a required check nothing reports blocks every PR: rename it in tools/pr-settings.sh too, then run tools/pr-settings.sh --apply')
+                         'a required check nothing reports blocks every PR: rename it in templates/org-repo/ruleset.json too, then run tools/pr-settings.sh --apply')
 
     def test_the_old_names_are_gone(self):
         # 15 Oct 2026: four required jobs became one with named steps. An old name coming back (a ruleset entry or a doc) fails here.

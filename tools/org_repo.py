@@ -21,6 +21,7 @@ TEMPLATES = ROOT / 'templates' / 'org-repo'
 ORG = 'jobadabra'
 ISSUE_REPO, ISSUE_TITLE = f'{ORG}/jobadabra', 'Org repos drift from the shared setup'
 WORKFLOWS = '.github/workflows'
+UNVERIFIED = []   # what the last check could not read with this token; cmd_check prints it once
 
 
 class NotFound(Exception):
@@ -72,8 +73,12 @@ def ruleset_gaps(want, have):
     """The differences between the template ruleset and a repo's: enforcement, branch, bypass actors (exactly), and each rule's own parameters."""
     gaps = subset_gaps({k: want[k] for k in ('name', 'target', 'enforcement', 'conditions')}, have)
     actors = lambda body: sorted((a['actor_type'], a['actor_id'], a['bypass_mode']) for a in body.get('bypass_actors', []))
-    if actors(want) != actors(have):
-        gaps.append(f'bypass actors are {actors(have)}, should be {actors(want)}')   # exact: an extra bypass is drift too
+    # Why (2 Nov 2026, Gitar on #2945): GitHub returns bypass_actors only to a requester with write access to the ruleset. A read-only token sees no key at all: that is "cannot verify"
+    # (a note, see UNVERIFIED), never an empty list, or every repo would drift for ever. A key that IS returned must match exactly (an extra bypass is drift too).
+    if 'bypass_actors' not in have:
+        UNVERIFIED.append('bypass actors are not shown to this token (it needs Administration: write on the repo to read them)')
+    elif actors(want) != actors(have):
+        gaps.append(f'bypass actors are {actors(have)}, should be {actors(want)}')
     have_rules = {rule['type']: rule for rule in have.get('rules', [])}
     for rule in want['rules']:
         if rule['type'] not in have_rules:
@@ -149,7 +154,10 @@ def cmd_check(args):
     """`check`: print every difference between the repos (all, or the named ones) and the templates; with --issue keep the one report issue. -> exit code (1 on drift without --issue)."""
     drift = {}
     for repo in args.repos or org_repos():
+        UNVERIFIED.clear()
         gaps = check_repo(repo)
+        for note in UNVERIFIED:
+            print(f'note {repo}: {note}')
         for gap in gaps:
             print(f'drift {repo}: {gap}')
         if gaps:
@@ -164,12 +172,14 @@ def cmd_check(args):
 def cmd_files(args):
     """`files`: write the repo's workflow files from the templates into the clone at args.clone, only those that differ. -> 0."""
     target = Path(args.clone) / WORKFLOWS
-    target.mkdir(parents=True, exist_ok=True)
+    if not args.dry_run:
+        target.mkdir(parents=True, exist_ok=True)
     for name in files_for(args.repo):
         source = (TEMPLATES / name).read_text(encoding='utf-8')
         if not (target / name).exists() or normalize((target / name).read_text(encoding='utf-8')) != normalize(source):
-            (target / name).write_text(source, encoding='utf-8')
-            print(f'wrote {WORKFLOWS}/{name}')
+            if not args.dry_run:
+                (target / name).write_text(source, encoding='utf-8')
+            print(f'{"would write" if args.dry_run else "wrote"} {WORKFLOWS}/{name}')
     return 0
 
 

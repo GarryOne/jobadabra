@@ -103,6 +103,13 @@ class Check(unittest.TestCase):
         self.assertIn('conflict-label.yml is missing', out)
         self.assertIn('pr-checks.yml differs', out)
 
+    def test_a_token_that_cannot_see_the_bypass_actors_is_a_note_not_drift(self):
+        fake = Fake()
+        del fake.ruleset['bypass_actors']   # what GitHub returns to a requester without write access to the ruleset
+        code, out = run(fake, 'check', 'jobadabra-lab')
+        self.assertEqual(code, 0)
+        self.assertIn('note jobadabra-lab: bypass actors are not shown', out)
+
     def test_each_repo_gets_its_profile(self):
         self.assertEqual(org_repo.files_for('jobadabra'), [])
         self.assertEqual(org_repo.files_for('jobadabra-web'), ['gitar-label.yml', 'conflict-label.yml'])
@@ -157,12 +164,21 @@ class Ruleset(unittest.TestCase):
 class Files(unittest.TestCase):
     def test_it_writes_only_what_differs_and_onboard_waits_for_the_check(self):
         with tempfile.TemporaryDirectory() as clone:
-            code, out = run(Fake(ruleset='none', files={}), 'onboard', 'jobadabra-lab', clone, '--dry-run')
+            fake = Fake(ruleset='none', files={})
+            code, out = run(fake, 'onboard', 'jobadabra-lab', clone)
             self.assertEqual(code, 0)
             self.assertIn('ruleset waits', out)
+            self.assertEqual([w[0] for w in fake.writes], ['PATCH'], 'the settings are applied, the ruleset is not')
             names = sorted(p.name for p in (Path(clone) / '.github/workflows').iterdir())
             self.assertEqual(names, ['conflict-label.yml', 'gitar-label.yml', 'pr-checks.yml'])
             self.assertEqual(run(Fake(), 'files', 'jobadabra-lab', clone)[1], '', 'a second run writes nothing')
+
+    def test_dry_run_writes_no_file_and_sends_nothing(self):
+        with tempfile.TemporaryDirectory() as clone:
+            fake = Fake(ruleset='none', files={})
+            code, out = run(fake, 'onboard', 'jobadabra-lab', clone, '--dry-run')
+            self.assertEqual((code, fake.writes, list(Path(clone).iterdir())), (0, [], []))
+            self.assertIn('would write .github/workflows/pr-checks.yml', out)
 
 
 class Templates(unittest.TestCase):
